@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/mitchellh/mapstructure"
 
+	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/transport"
 )
 
@@ -91,19 +93,28 @@ func (r *UDP) Receive() <-chan []byte {
 	return r.ch
 }
 
-// Send sends packet to IOT device
-func (r *UDP) Send(packet []byte) error {
-	// Just do nothing in bypass mode
-	if !r.enabled || r.resolvedGatewayAddress == nil {
-		return nil
-	}
+// SendProtobuf serializes protobuf msg,
+// encodes output, wraps it with OpenIOT header
+// and eventually sends it to gateway
+func (r *UDP) SendProtobuf(device device.Device, msg proto.Message) error {
+	// var buffer bytes.Buffer
 
-	_, err := r.socket.WriteTo(packet, r.resolvedGatewayAddress)
-	if err == nil {
-		glog.Infof("UDP LoRa gateway: %v <-- %d bytes", r.resolvedGatewayAddress, len(packet))
-	}
+	// Create Message Heder
+	// hdr := &
 
-	return err
+	// Serialize message
+	// serializedMsg, err := proto.Marshal(msg)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// _, err := r.socket.WriteTo(packet, r.resolvedGatewayAddress)
+	// if err == nil {
+	// 	glog.Infof("UDP LoRa gateway: %v <-- %d bytes", r.resolvedGatewayAddress, len(packet))
+	// }
+
+	return nil
+	// return err
 }
 
 func (r *UDP) serve(ctx context.Context) {

@@ -23,8 +23,3 @@ func (m *MockTransport) Run(context.Context) error {
 func (m *MockTransport) Receive() <-chan []byte {
 	return m.Ch
 }
-
-func (m *MockTransport) SendPacket(packet []byte) error {
-	m.History = append(m.History, packet)
-	return m.Error
-}
