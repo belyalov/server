@@ -30,12 +30,12 @@ func FindTransportByName(name string) transport.Transport {
 
 // MustAddTransport adds new transport into registry or panics
 // if it is already exist.
-func MustAddTransport(name string, instance transport.Transport) {
-	if _, ok := transportsByName[name]; ok {
-		panic(fmt.Sprintf("Transport '%s' already exists", name))
+func MustAddTransport(instance transport.Transport) {
+	if _, ok := transportsByName[instance.GetName()]; ok {
+		panic(fmt.Sprintf("Transport '%s' already exists", instance.GetName()))
 	}
 
-	transportsByName[name] = instance
+	transportsByName[instance.GetName()] = instance
 }
 
 // GetAllTransports returns all registered transports

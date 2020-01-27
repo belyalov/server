@@ -12,12 +12,12 @@ func TestTransport(t *testing.T) {
 	transportsByName = make(map[string]transport.Transport)
 
 	// Add one
-	tr := &transport.MockTransport{}
-	MustAddTransport("test1", tr)
+	tr := transport.NewMockTransport("test1")
+	MustAddTransport(tr)
 
 	// Add it one more time
 	assert.Panics(t, func() {
-		MustAddTransport("test1", tr)
+		MustAddTransport(tr)
 	})
 
 	// Lookup it
