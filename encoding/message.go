@@ -4,124 +4,137 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	secure_rand "crypto/rand"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	insecure_rand "math/rand"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/open-iot-devices/protobufs/go/openiot"
-	"github.com/open-iot-devices/server/device"
 )
 
-// SerializeAndEncodeMessage makes ready to be send bytes
-// by serializing and (optional) encoding of given protobuf.
-// It also takes care of preparing OpenIoT message header
-func SerializeAndEncodeMessage(dev device.Device, message proto.Message) ([]byte, error) {
-	var serialized bytes.Buffer
-
-	hdr := &openiot.HeaderMessage{
-		DeviceId: dev.GetDeviceID(),
-	}
-
-	// Special handling for JoinRequest and JoinResponse system messages
-	// since they should never be encrypted (key exchange).
-	// so handling them specially
-	if _, ok := message.(*openiot.SystemMessage); ok {
-		hdr.SystemMessage = true
-		hdr.Encryption = &openiot.HeaderMessage_Plain{Plain: true}
-		// Write 2 messages: Header + System
-		_, err := SerializeSingleMessage(&serialized, hdr)
-		if err != nil {
-			return nil, err
-		}
-		_, err = SerializeSingleMessage(&serialized, message)
-		return nil, err
-	}
-
-	// Serialize message
-	if _, err := SerializeSingleMessage(&serialized, message); err != nil {
-		return nil, err
-	}
-
-	// Align to AES block size
-	if serialized.Len()%aes.BlockSize != 0 {
-		for i := 0; i < serialized.Len()%aes.BlockSize; i++ {
-			if err := serialized.WriteByte(byte(insecure_rand.Intn(255))); err != nil {
-				return nil, err
-			}
+// EncryptAndWriteMessages serializes all messages using "delimited"
+// approach, then encodes result with AES using key and IV.
+func EncryptAndWriteMessages(buffer *bytes.Buffer, key, iv []byte, msgs ...proto.Message) error {
+	// Serialize all messages into continuos buffer
+	var serializedBuf bytes.Buffer
+	for _, msg := range msgs {
+		if err := WriteSingleMessage(&serializedBuf, msg); err != nil {
+			return err
 		}
 	}
 
-	// Calculate AES IV (just random values)
-	aesIv := make([]byte, aes.BlockSize)
-	if _, err := secure_rand.Read(aesIv); err != nil {
-		return nil, err
+	// AES operates only with blocks aligned to aes.BlockSize
+	if err := addPadding(&serializedBuf); err != nil {
+		return err
 	}
 
-	// Encrypt message
-	block, err := aes.NewCipher(dev.GetEncryptionKey())
+	// Encrypt
+	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	encrypted := make([]byte, serialized.Len())
-	encryptor := cipher.NewCBCEncrypter(block, aesIv)
-	encryptor.CryptBlocks(encrypted, serialized.Bytes())
+	encrypted := make([]byte, serializedBuf.Len())
+	encryptor := cipher.NewCBCEncrypter(block, iv)
+	encryptor.CryptBlocks(encrypted, serializedBuf.Bytes())
 
-	// Compose entire message
-	var payload bytes.Buffer
-	hdr.Encryption = &openiot.HeaderMessage_AesIv{
-		AesIv: aesIv,
-	}
-	// Write message header
-	if _, err = SerializeSingleMessage(&payload, hdr); err != nil {
-		return nil, err
-	}
-	// Write encrypted (and previously serialized) message
-	payload.Write(encrypted)
+	_, err = buffer.Write(encrypted)
 
-	return payload.Bytes(), nil
+	return err
 }
 
-// DeserializeSingleMessage reads and de-serializes protobuf
+// DecryptAndReadMessages decrypts buffer using key and IV, then deserializes all messages
+// using "delimited" approach.
+func DecryptAndReadMessages(buffer *bytes.Buffer, key, iv []byte, msgs ...proto.Message) error {
+	// AES encrypted message must be aligned to AES block size
+	if buffer.Len()%aes.BlockSize != 0 {
+		return fmt.Errorf("Buffer is not aligned to AES block size")
+	}
+
+	// Decode buffer
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return err
+	}
+	decryptor := cipher.NewCBCDecrypter(block, iv)
+	decrypted := make([]byte, buffer.Len())
+	decryptor.CryptBlocks(decrypted, buffer.Bytes())
+
+	// Deserialize messages
+	tmpBuf := bytes.NewBuffer(decrypted)
+	for _, msg := range msgs {
+		if err := ReadSingleMessage(tmpBuf, msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ReadSingleMessage reads and de-serializes protobuf
 // from buffer previously encoded using "delimited" approach,
 // i.e. message length followed by message payload
-func DeserializeSingleMessage(buffer *bytes.Buffer, msg proto.Message) error {
-	// Read message length (encoded using "delimited" approach)
-	msgLen, err := binary.ReadUvarint(buffer)
+func ReadSingleMessage(buffer *bytes.Buffer, msg proto.Message) error {
+	messageLen, err := readMessageLen(buffer)
 	if err != nil {
-		return fmt.Errorf("Unable to read message length: %v", err)
+		return err
 	}
 
-	// Ensure that it fits remain buffer
-	if int(msgLen) > buffer.Len() {
-		return fmt.Errorf("Invalid message length: %d, max %d", msgLen, buffer.Len())
+	// Check boundaries
+	if messageLen > buffer.Len() {
+		return fmt.Errorf("Invalid message length: %d, max %d", messageLen, buffer.Len())
 	}
 
-	// De-Serialize
-	return proto.Unmarshal(buffer.Next(int(msgLen)), msg)
+	// De-serialize
+	return proto.Unmarshal(buffer.Next(messageLen), msg)
 }
 
-// SerializeSingleMessage serializes single protobuf
+// WriteSingleMessage serializes single protobuf
 // using "delimited" approach into buffer.
-// Returns amount of written bytes (including message length) or error, if any
-func SerializeSingleMessage(buffer *bytes.Buffer, msg proto.Message) (int, error) {
+func WriteSingleMessage(buffer *bytes.Buffer, msg proto.Message) error {
 	// Serialize message
 	payload, err := proto.Marshal(msg)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	// Write message length
-	tmpBuf := make([]byte, 8)
-	lenSize := binary.PutUvarint(tmpBuf, uint64(len(payload)))
-	_, err = buffer.Write(tmpBuf[:lenSize])
-	if err != nil {
-		return 0, err
+	// Write message len
+	if err := writeMessageLen(buffer, len(payload)); err != nil {
+		return err
 	}
 
 	// Write serialized message
 	_, err = buffer.Write(payload)
 
-	return len(payload) + lenSize, err
+	return err
+}
+
+func writeMessageLen(buffer *bytes.Buffer, messageLen int) error {
+	tmpBuf := make([]byte, 8)
+	written := binary.PutUvarint(tmpBuf, uint64(messageLen))
+	_, err := buffer.Write(tmpBuf[:written])
+
+	return err
+}
+
+func readMessageLen(buffer *bytes.Buffer) (int, error) {
+	msgLen, err := binary.ReadUvarint(buffer)
+
+	return int(msgLen), err
+}
+
+// addPadding checks / adds random bytes padding
+// to make buffer aligned with aes.BlockSize
+func addPadding(buf *bytes.Buffer) error {
+	if buf.Len()%aes.BlockSize == 0 {
+		// Perfectly aligned to AES block size
+		return nil
+	}
+
+	padding := make([]byte, aes.BlockSize-buf.Len()%aes.BlockSize)
+	if _, err := rand.Read(padding); err != nil {
+		return err
+	}
+
+	_, err := buf.Write(padding)
+
+	return err
 }
