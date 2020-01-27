@@ -10,7 +10,7 @@ import (
 type Config struct {
 	// Devices  []interface{}
 	// InfluxDb interface{}
-	Udp interface{}
+	UDP map[string]interface{}
 	// Mqtt     interface{}
 }
 

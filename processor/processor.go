@@ -1,14 +1,24 @@
 package processor
 
 import (
+	"bytes"
+
+	"github.com/golang/glog"
+
 	"github.com/open-iot-devices/server/transport"
 )
 
+// Message contains packet payload and source transport
+type Message struct {
+	Source  transport.Transport
+	Payload []byte
+}
+
 // ProcessMessage decodes / deserializes raw packet and calls appropriate handler
-func ProcessMessage(wire transport.Transport, packet []byte) error {
-	// // IoT message contains 2 protobufs in series using "delimited" mode
-	// // i.e. when message length prepends the message.
-	// buffer := bytes.NewBuffer(packet)
+func ProcessMessage(message *Message) error {
+	glog.Infof("Got packet from %s", message.Source.GetName())
+	buffer := bytes.NewBuffer(message.Payload)
+	glog.Infof("packet: %v", buffer.String())
 
 	// // Read HeaderMessage (always non-encrypted)
 	// header := &openiot.HeaderMessage{}

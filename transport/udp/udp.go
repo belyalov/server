@@ -7,29 +7,32 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/proto"
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/transport"
 )
 
 // UDP implements server/transport interface
 type UDP struct {
-	// Configuration parameters
-	Listen        string
-	MaxPacketSize int
-	Gateway       string
+	transport.BaseTransport
 
-	ch                     chan []byte
-	enabled                bool
-	resolvedGatewayAddress *net.UDPAddr
-	socket                 net.PacketConn
+	// Configuration parameters
+	Listen  string
+	Address string
+
+	name            string
+	ch              chan []byte
+	enabled         bool
+	resolvedAddress *net.UDPAddr
+	socket          net.PacketConn
 }
 
 // NewUDP creates new instance of UDP transport
-func NewUDP(cfg interface{}) (transport.Transport, error) {
+func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
 	udp := &UDP{
+		BaseTransport: transport.BaseTransport{
+			Name: name,
+		},
 		ch: make(chan []byte, 1),
 	}
 
@@ -43,14 +46,10 @@ func NewUDP(cfg interface{}) (transport.Transport, error) {
 	if udp.Listen == "" {
 		return nil, errors.New("config parameter udp.listen is required")
 	}
-	if udp.MaxPacketSize == 0 {
-		udp.MaxPacketSize = 1024
-	}
-	udp.enabled = true
 
 	// Resolve LoRa gateway address, if any
-	if udp.Gateway != "" {
-		udp.resolvedGatewayAddress, err = net.ResolveUDPAddr("udp", udp.Gateway)
+	if udp.Address != "" {
+		udp.resolvedAddress, err = net.ResolveUDPAddr("udp", udp.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -61,15 +60,8 @@ func NewUDP(cfg interface{}) (transport.Transport, error) {
 	return udp, err
 }
 
-// Run runs UDP server in blocking mode
-func (r *UDP) Run(ctx context.Context) error {
-	if !r.enabled {
-		// If server is not enabled - simply blocks until context done
-		glog.Info("UDP is not enabled")
-		<-ctx.Done()
-		return nil
-	}
-
+// Start starts UDP server, non blocking call
+func (r *UDP) Start(ctx context.Context) error {
 	// Create UDP listening socket
 	var err error
 	r.socket, err = net.ListenPacket("udp", r.Listen)
@@ -81,9 +73,14 @@ func (r *UDP) Run(ctx context.Context) error {
 	// Start receiver
 	go r.serve(ctx)
 
-	// Wait until context canceled
-	<-ctx.Done()
-	r.socket.Close()
+	// Start context listener:
+	// since UDP read is blocking call, but, can be terminated
+	// when socket is closed - starting one more goroutine
+	// just to close socket once server terminated
+	go func() {
+		<-ctx.Done()
+		r.socket.Close()
+	}()
 
 	return nil
 }
@@ -93,40 +90,32 @@ func (r *UDP) Receive() <-chan []byte {
 	return r.ch
 }
 
-// SendProtobuf serializes protobuf msg,
-// encodes output, wraps it with OpenIOT header
-// and eventually sends it to gateway
-func (r *UDP) SendProtobuf(device device.Device, msg proto.Message) error {
-	// var buffer bytes.Buffer
-
-	// Create Message Heder
-	// hdr := &
-
-	// Serialize message
-	// serializedMsg, err := proto.Marshal(msg)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err := r.socket.WriteTo(packet, r.resolvedGatewayAddress)
-	// if err == nil {
-	// 	glog.Infof("UDP LoRa gateway: %v <-- %d bytes", r.resolvedGatewayAddress, len(packet))
-	// }
+// Send simply sends payload as UDP packet to address from configuration
+func (r *UDP) Send(packet []byte) error {
+	sent, err := r.socket.WriteTo(packet, r.resolvedAddress)
+	if err != nil {
+		return err
+	}
+	if sent != len(packet) {
+		glog.Warningf("Transport %s: packet truncated! Sent only %d of %d",
+			r.GetName(), sent, len(packet))
+	}
 
 	return nil
-	// return err
 }
 
 func (r *UDP) serve(ctx context.Context) {
-	buf := make([]byte, r.MaxPacketSize)
+	buf := make([]byte, 65535)
+
 	for {
 		n, _, err := r.socket.ReadFrom(buf)
 		if err != nil {
 			// Terminate goroutine when listener closed
 			if strings.Contains(err.Error(), "use of closed network connection") {
+				glog.Info("terminated udp")
 				return
 			}
-			glog.Infof("readFrom failed: %v", err)
+			glog.Infof("%s: readFrom failed: %v", r.GetName(), err)
 			continue
 		}
 		r.ch <- buf[:n]

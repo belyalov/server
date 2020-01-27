@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-
 	"github.com/open-iot-devices/server/processor"
+	"github.com/open-iot-devices/server/registry"
+	"github.com/open-iot-devices/server/transport"
 	"github.com/open-iot-devices/server/transport/udp"
 )
 
@@ -25,48 +26,73 @@ func main() {
 	flag.Parse()
 
 	// Load configuration
-	cfg, err := ConfigLoadFromFile(*flagConfig)
+	configuration, err := ConfigLoadFromFile(*flagConfig)
 	if err != nil {
 		glog.Fatalf("Unable to read config file %s: %v", *flagConfig, err)
 	}
 
-	// Setup services
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	// caps := &devices.Capabilities{}
-
-	// Start UDP transport
-	udpTransport, err := udp.NewUDP(cfg.Udp)
-	if err != nil {
-		glog.Fatalf("Unable to create UDP transport: %v", err)
-	}
-	wg.Add(1)
-	go func(wg *sync.WaitGroup) {
-		err := udpTransport.Run(ctx)
-		if err != nil {
-			glog.Fatalf("UDP transport failed to run: %v", err)
+	// Create transports
+	for name, config := range configuration.UDP {
+		glog.Infof("Creating UDP '%s' transport...", name)
+		if instance, err := udp.NewUDP(name, config); err == nil {
+			registry.MustAddTransport(name, instance)
+		} else {
+			glog.Fatalf("Unable to create UDP transport '%s': %v", name, err)
 		}
-		wg.Done()
-	}(&wg)
+	}
+
+	// Create devices
+	// TODO
+
+	// To be able to shutdown server gracefully...
+	var wg sync.WaitGroup
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
+	// Start all transports
+	incomingMessageCh := make(chan *processor.Message)
+	for name, instance := range registry.GetAllTransports() {
+		glog.Infof("Starting %s transport...", name)
+		if err := instance.Start(ctx); err != nil {
+			glog.Fatalf("Unable to start transport '%s': %v", name, err)
+		}
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, name string, instance transport.Transport) {
+			for {
+				select {
+				case packet := <-instance.Receive():
+					// Forward packet
+					incomingMessageCh <- &processor.Message{
+						Source:  instance,
+						Payload: packet,
+					}
+				case <-ctx.Done():
+					glog.Infof("Transport %s terminated", name)
+					wg.Done()
+					return
+				}
+			}
+		}(&wg, name, instance)
+	}
 
 	// Setup SIGTERM / SIGINT
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 
+	glog.Info("OpeIoT server ready.")
+
+	// Handle all incoming packets
 	for {
-		// Wait for packet from any transport
-		var err error
 		select {
-		case packet := <-udpTransport.Receive():
-			err := processor.ProcessMessage(udpTransport, packet)
-			if err != nil {
-				glog.Infof("ProcessPacket: %v", err)
+		case message := <-incomingMessageCh:
+			if err := processor.ProcessMessage(message); err != nil {
+				glog.Infof("ProcessPacket failed: %v", err)
 			}
 		case sig := <-signalCh:
 			glog.Infof("Got SIG %v", sig)
 			// Cancel context and wait until all jobs done
-			cancel()
-			// wg.Wait()
+			ctxCancel()
+			wg.Wait()
+			time.Sleep(1 * time.Second)
 			// Save devices configuration
 			// err := devices.SaveToFile(*flagDevices)
 			// if err != nil {
@@ -75,10 +101,6 @@ func main() {
 			glog.Info("Gracefully terminated")
 			glog.Flush()
 			return
-		}
-		// Handle all errors in one place
-		if err != nil {
-			glog.Infof("ProcessPacket failed: %v", err)
 		}
 	}
 

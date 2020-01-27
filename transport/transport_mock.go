@@ -2,6 +2,9 @@ package transport
 
 import (
 	"context"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/open-iot-devices/server/device"
 )
 
 type MockTransport struct {
@@ -16,10 +19,14 @@ func NewMockTransport() *MockTransport {
 	}
 }
 
-func (m *MockTransport) Run(context.Context) error {
+func (m *MockTransport) Start(context.Context) error {
 	return m.Error
 }
 
 func (m *MockTransport) Receive() <-chan []byte {
 	return m.Ch
+}
+
+func (m *MockTransport) SendProtobuf(device device.Device, msg proto.Message) error {
+	return nil
 }
