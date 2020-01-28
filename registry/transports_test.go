@@ -22,6 +22,7 @@ func TestTransport(t *testing.T) {
 
 	// Lookup it
 	assert.NotNil(t, FindTransportByName("test1"))
+	assert.Contains(t, GetAllTransports(), "test1")
 
 	// Negative - not found
 	assert.Nil(t, FindTransportByName("test111"))

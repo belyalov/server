@@ -1,7 +1,6 @@
 package udp
 
 import (
-	"context"
 	"errors"
 	"net"
 	"strings"
@@ -17,12 +16,11 @@ type UDP struct {
 	transport.BaseTransport
 
 	// Configuration parameters
-	Listen  string
-	Address string
+	Listen string
+	Remote string
 
 	name            string
-	ch              chan []byte
-	enabled         bool
+	receiveCh       chan []byte
 	resolvedAddress *net.UDPAddr
 	socket          net.PacketConn
 }
@@ -33,7 +31,6 @@ func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
 		BaseTransport: transport.BaseTransport{
 			Name: name,
 		},
-		ch: make(chan []byte, 1),
 	}
 
 	// If no configuration present - bypass mode
@@ -44,12 +41,12 @@ func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
 	// Map / verify configuration
 	err := mapstructure.Decode(cfg, udp)
 	if udp.Listen == "" {
-		return nil, errors.New("config parameter udp.listen is required")
+		return nil, errors.New("config parameter udp.ListenAddress is required")
 	}
 
 	// Resolve LoRa gateway address, if any
-	if udp.Address != "" {
-		udp.resolvedAddress, err = net.ResolveUDPAddr("udp", udp.Address)
+	if udp.Remote != "" {
+		udp.resolvedAddress, err = net.ResolveUDPAddr("udp", udp.Remote)
 		if err != nil {
 			return nil, err
 		}
@@ -61,33 +58,30 @@ func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
 }
 
 // Start starts UDP server, non blocking call
-func (r *UDP) Start(ctx context.Context) error {
+func (r *UDP) Start() error {
 	// Create UDP listening socket
 	var err error
-	r.socket, err = net.ListenPacket("udp", r.Listen)
-	if err != nil {
+	if r.socket, err = net.ListenPacket("udp", r.Listen); err != nil {
 		return err
 	}
-	glog.Infof("UDP server started at %s", r.Listen)
+	glog.Infof("%s: UDP server started at %s", r.GetName(), r.Listen)
 
-	// Start receiver
-	go r.serve(ctx)
-
-	// Start context listener:
-	// since UDP read is blocking call, but, can be terminated
-	// when socket is closed - starting one more goroutine
-	// just to close socket once server terminated
-	go func() {
-		<-ctx.Done()
-		r.socket.Close()
-	}()
+	// Start UDP listener (with capability of buffer one packet)
+	r.receiveCh = make(chan []byte, 1)
+	go r.serve()
 
 	return nil
 }
 
+// Stop performs graceful shutdown of UDP server
+func (r *UDP) Stop() {
+	// Goroutine will be canceled once socket.ReadFrom returns with error
+	r.socket.Close()
+}
+
 // Receive returns channel where UDP will send received packets to.
 func (r *UDP) Receive() <-chan []byte {
-	return r.ch
+	return r.receiveCh
 }
 
 // Send simply sends payload as UDP packet to address from configuration
@@ -97,27 +91,27 @@ func (r *UDP) Send(packet []byte) error {
 		return err
 	}
 	if sent != len(packet) {
-		glog.Warningf("Transport %s: packet truncated! Sent only %d of %d",
+		glog.Warningf("%s: packet truncated! Sent only %d of %d",
 			r.GetName(), sent, len(packet))
 	}
 
 	return nil
 }
 
-func (r *UDP) serve(ctx context.Context) {
+func (r *UDP) serve() {
 	buf := make([]byte, 65535)
 
 	for {
+		// ReadFrom is blocking call unless socket closed
 		n, _, err := r.socket.ReadFrom(buf)
 		if err != nil {
-			// Terminate goroutine when listener closed
+			// Terminate goroutine if socket closed
 			if strings.Contains(err.Error(), "use of closed network connection") {
-				glog.Info("terminated udp")
 				return
 			}
 			glog.Infof("%s: readFrom failed: %v", r.GetName(), err)
 			continue
 		}
-		r.ch <- buf[:n]
+		r.receiveCh <- buf[:n]
 	}
 }

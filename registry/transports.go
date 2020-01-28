@@ -20,14 +20,6 @@ func FindTransportByName(name string) transport.Transport {
 	return nil
 }
 
-// // MustTransport lookups transport by name. Panics if nothing found.
-// func MustTransport(name string) transport.Transport {
-// 	if transport := FindTransportByName(name); transport != nil {
-// 		return transport
-// 	}
-// 	panic(fmt.Sprintf("Transport '%s' not found", name))
-// }
-
 // MustAddTransport adds new transport into registry or panics
 // if it is already exist.
 func MustAddTransport(instance transport.Transport) {

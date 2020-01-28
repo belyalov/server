@@ -1,14 +1,12 @@
 package transport
 
-import (
-	"context"
-)
-
 // Transport represent a OpenIoT transport layer, e.g.
 // UDP, TCP, USB, etc
 type Transport interface {
 	GetName() string
-	Start(context.Context) error
+
+	Start() error
+	Stop()
 
 	Receive() <-chan []byte
 	Send([]byte) error

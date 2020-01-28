@@ -14,8 +14,6 @@ func TestReadWriteSingleMessage(t *testing.T) {
 	original := &openiot.Message{
 		DeviceId: 123456,
 		Sequence: 3333,
-		Name:     "name",
-		Value:    []byte{0, 0, 1},
 	}
 
 	// Write message
@@ -59,8 +57,6 @@ func TestReadSingleMessage(t *testing.T) {
 	original := &openiot.Message{
 		DeviceId: 10000,
 		Sequence: 11111,
-		Name:     "junk",
-		Value:    []byte{1, 2, 3},
 	}
 
 	var buffer bytes.Buffer

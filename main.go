@@ -35,7 +35,7 @@ func main() {
 	for name, config := range configuration.UDP {
 		glog.Infof("Creating UDP '%s' transport...", name)
 		if instance, err := udp.NewUDP(name, config); err == nil {
-			registry.MustAddTransport(name, instance)
+			registry.MustAddTransport(instance)
 		} else {
 			glog.Fatalf("Unable to create UDP transport '%s': %v", name, err)
 		}
@@ -52,7 +52,7 @@ func main() {
 	incomingMessageCh := make(chan *processor.Message)
 	for name, instance := range registry.GetAllTransports() {
 		glog.Infof("Starting %s transport...", name)
-		if err := instance.Start(ctx); err != nil {
+		if err := instance.Start(); err != nil {
 			glog.Fatalf("Unable to start transport '%s': %v", name, err)
 		}
 		wg.Add(1)
@@ -66,6 +66,7 @@ func main() {
 						Payload: packet,
 					}
 				case <-ctx.Done():
+					instance.Stop()
 					glog.Infof("Transport %s terminated", name)
 					wg.Done()
 					return
@@ -92,7 +93,7 @@ func main() {
 			// Cancel context and wait until all jobs done
 			ctxCancel()
 			wg.Wait()
-			time.Sleep(1 * time.Second)
+			// time.Sleep(1 * time.Second)
 			// Save devices configuration
 			// err := devices.SaveToFile(*flagDevices)
 			// if err != nil {

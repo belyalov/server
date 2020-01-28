@@ -1,9 +1,5 @@
 package transport
 
-import (
-	"context"
-)
-
 // MockTransport is dummy implementation of Transport interface
 // mostly for unittests.
 type MockTransport struct {
@@ -25,8 +21,12 @@ func NewMockTransport(name string) *MockTransport {
 }
 
 // Start does nothing, it just returns preset error
-func (m *MockTransport) Start(context.Context) error {
+func (m *MockTransport) Start() error {
 	return m.Error
+}
+
+// Stop does nothing
+func (m *MockTransport) Stop() {
 }
 
 // Receive returns pre created channel
