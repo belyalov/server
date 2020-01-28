@@ -1,52 +1,45 @@
 package device
 
-// Device is top level interface for all IoT devices
-type Device interface {
-	SetEncryptionKey(key []byte)
-	GetEncryptionKey() []byte
+import "github.com/open-iot-devices/server/device/handlers"
 
-	SetDeviceID(id uint64)
-	GetDeviceID() uint64
+// Device is single IoT device
+type Device struct {
+	ID           uint64
+	Name         string
+	Manufacturer string
+	ProductURL   string `yaml:"product_url"`
+	ProtobufURL  string `yaml:"protobuf_url"`
+
+	// Encryption key
+	KeyString string `yaml:"key"`
+	Key       []byte `yaml:"-"`
+
+	// Device handler
+	HandlerName string                 `yaml:"handler"`
+	Handler     handlers.DeviceHandler `yaml:"-"`
+
+	// Sequences used to skip duplicated messages
+	SequenceSend    uint32 `yaml:"sequence_send"`
+	SequenceReceive uint32 `yaml:"sequence_receive"`
 }
 
-// BaseDevice partially implements common methods
-// of Device interface
-type BaseDevice struct {
-	id  uint64
-	key []byte
-}
-
-// UnknownDevice represent unsupported device
-// Most common use case is just joined device.
-type UnknownDevice struct {
-	BaseDevice
-}
-
-// NewUknownDevice creates instance of UnknownDevice
-func NewUknownDevice(id uint64) Device {
-	return &UnknownDevice{
-		BaseDevice: BaseDevice{
-			id: id,
-		},
+// NewUnknownDevice creates unknown device:
+// - names set to "unknown"
+// - device handler set to "no handler"
+func NewUnknownDevice(id uint64) *Device {
+	return &Device{
+		ID:           id,
+		Name:         "Unknown Device",
+		Manufacturer: "Unknown",
+		Handler:      &handlers.NoHandler{},
+		HandlerName:  "NoHandler",
 	}
 }
 
-// SetEncryptionKey sets encryption key
-func (b *BaseDevice) SetEncryptionKey(key []byte) {
-	b.key = key
-}
-
-// GetEncryptionKey returns currentl encryption key
-func (b *BaseDevice) GetEncryptionKey() []byte {
-	return b.key
-}
-
-// SetDeviceID sets encryption key
-func (b *BaseDevice) SetDeviceID(id uint64) {
-	b.id = id
-}
-
-// GetDeviceID returns currentl encryption key
-func (b *BaseDevice) GetDeviceID() uint64 {
-	return b.id
+// IsUnknown checks device's handler and returns true if it is set to NoHandler
+func (d *Device) IsUnknown() bool {
+	if _, ok := d.Handler.(*handlers.NoHandler); !ok {
+		return true
+	}
+	return false
 }

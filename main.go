@@ -104,7 +104,6 @@ func main() {
 			return
 		}
 	}
-
 }
 
 // // Start InfluxDB

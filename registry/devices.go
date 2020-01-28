@@ -7,16 +7,16 @@ import (
 	"github.com/open-iot-devices/server/device"
 )
 
-var devicesByID map[uint64]device.Device
+var devicesByID map[uint64]*device.Device
 var deviceLock sync.RWMutex
 
 func init() {
-	devicesByID = make(map[uint64]device.Device)
+	devicesByID = make(map[uint64]*device.Device)
 }
 
 // FindDeviceByID looks up device by id.
 // Returns Device or nil, if not found
-func FindDeviceByID(id uint64) device.Device {
+func FindDeviceByID(id uint64) *device.Device {
 	deviceLock.RLock()
 	defer deviceLock.RUnlock()
 
@@ -29,16 +29,15 @@ func FindDeviceByID(id uint64) device.Device {
 
 // AddDevice adds new device into registry
 // Returns error or nil in case of success
-func AddDevice(device device.Device) error {
+func AddDevice(device *device.Device) error {
 	deviceLock.Lock()
 	defer deviceLock.Unlock()
 
-	id := device.GetDeviceID()
-	if _, ok := devicesByID[id]; ok {
-		return fmt.Errorf("Device with ID %x already exists in registry", id)
+	if _, ok := devicesByID[device.ID]; ok {
+		return fmt.Errorf("Device with ID %x already exists in registry", device.ID)
 	}
 
-	devicesByID[id] = device
+	devicesByID[device.ID] = device
 
 	return nil
 }
