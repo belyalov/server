@@ -8,10 +8,7 @@ import (
 
 // Config is top level configuration for all features
 type Config struct {
-	// Devices  []interface{}
-	// InfluxDb interface{}
 	UDP map[string]interface{}
-	// Mqtt     interface{}
 }
 
 // ConfigLoadFromFile reads and parses YAML configuration from file
