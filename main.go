@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"math/rand"
 	"os"
@@ -11,8 +10,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+
+	"github.com/open-iot-devices/server/config"
 	"github.com/open-iot-devices/server/processor"
-	"github.com/open-iot-devices/server/registry"
 	"github.com/open-iot-devices/server/transport"
 	"github.com/open-iot-devices/server/transport/udp"
 )
@@ -26,54 +26,67 @@ func main() {
 	flag.Parse()
 
 	// Load configuration
-	configuration, err := ConfigLoadFromFile(*flagConfig)
+	configuration, err := config.LoadConfigFromFile(*flagConfig)
 	if err != nil {
 		glog.Fatalf("Unable to read config file %s: %v", *flagConfig, err)
 	}
 
 	// Create transports
+	transports := map[string]transport.Transport{}
 	for name, config := range configuration.UDP {
 		glog.Infof("Creating UDP '%s' transport...", name)
-		if instance, err := udp.NewUDP(name, config); err == nil {
-			registry.MustAddTransport(instance)
-		} else {
+		instance, err := udp.NewUDP(name, config)
+		if err != nil {
 			glog.Fatalf("Unable to create UDP transport '%s': %v", name, err)
 		}
+		transports[name] = instance
 	}
+
+	// registry.AddDevice(&device.Device{ID: 111, Name: "device111"})
+	// registry.AddDevice(&device.Device{ID: 222, Name: "device222"})
+
+	// registry.SaveDevicesToYAML("zzz")
 
 	// Create devices
 	// TODO
+	// fields := map[string]interface{}{
+	// 	"id": 1,
+	// }
+	// d, e := device.NewDeviceFromConfig(fields)
+	// fmt.Printf("d: %+v %v\n", d, e)
+	// devs, err := LoadDevicesFromFile()
+	// fmt.Printf("%+v %v\n", devs, err)
 
 	// To be able to shutdown server gracefully...
 	var wg sync.WaitGroup
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	// ctx, ctxCancel := context.WithCancel(context.Background())
 
 	// Start all transports
 	incomingMessageCh := make(chan *processor.Message)
-	for name, instance := range registry.GetAllTransports() {
-		glog.Infof("Starting %s transport...", name)
-		if err := instance.Start(); err != nil {
-			glog.Fatalf("Unable to start transport '%s': %v", name, err)
-		}
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, name string, instance transport.Transport) {
-			for {
-				select {
-				case packet := <-instance.Receive():
-					// Forward packet
-					incomingMessageCh <- &processor.Message{
-						Source:  instance,
-						Payload: packet,
-					}
-				case <-ctx.Done():
-					instance.Stop()
-					glog.Infof("Transport %s terminated", name)
-					wg.Done()
-					return
-				}
-			}
-		}(&wg, name, instance)
-	}
+	// for name, instance := range registry.GetAllTransports() {
+	// 	glog.Infof("Starting %s transport...", name)
+	// 	if err := instance.Start(); err != nil {
+	// 		glog.Fatalf("Unable to start transport '%s': %v", name, err)
+	// 	}
+	// 	wg.Add(1)
+	// 	go func(wg *sync.WaitGroup, name string, instance transport.Transport) {
+	// 		for {
+	// 			select {
+	// 			case packet := <-instance.Receive():
+	// 				// Forward packet
+	// 				incomingMessageCh <- &processor.Message{
+	// 					Source:  instance,
+	// 					Payload: packet,
+	// 				}
+	// 			case <-ctx.Done():
+	// 				instance.Stop()
+	// 				glog.Infof("Transport %s terminated", name)
+	// 				wg.Done()
+	// 				return
+	// 			}
+	// 		}
+	// 	}(&wg, name, instance)
+	// }
 
 	// Setup SIGTERM / SIGINT
 	signalCh := make(chan os.Signal, 1)
@@ -91,7 +104,7 @@ func main() {
 		case sig := <-signalCh:
 			glog.Infof("Got SIG %v", sig)
 			// Cancel context and wait until all jobs done
-			ctxCancel()
+			// ctxCancel()
 			wg.Wait()
 			// time.Sleep(1 * time.Second)
 			// Save devices configuration

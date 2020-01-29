@@ -1,45 +1,67 @@
 package device
 
-import "github.com/open-iot-devices/server/device/handlers"
+import (
+	"fmt"
+
+	"github.com/open-iot-devices/server/transport"
+)
 
 // Device is single IoT device
 type Device struct {
-	ID           uint64
-	Name         string
-	Manufacturer string
-	ProductURL   string `yaml:"product_url"`
-	ProtobufURL  string `yaml:"protobuf_url"`
+	// Next parameters will be written to YAML configuration
+	ID              uint64 `yaml:"-"`
+	IDhex           string `yaml:"id"`
+	Name            string
+	Manufacturer    string
+	ProductURL      string   `yaml:"product_url"`
+	ProtobufURL     string   `yaml:"protobuf_url"`
+	KeyString       string   `yaml:"key"`
+	Key             []byte   `yaml:"-" mapstructure:"-"`
+	SequenceSend    uint32   `yaml:"sequence_send"`
+	SequenceReceive uint32   `yaml:"sequence_receive"`
+	HandlerNames    []string `yaml:"handlers"`
+	TransportName   string   `yaml:"transport"`
 
-	// Encryption key
-	KeyString string `yaml:"key"`
-	Key       []byte `yaml:"-"`
-
-	// Device handler
-	HandlerName string                 `yaml:"handler"`
-	Handler     handlers.DeviceHandler `yaml:"-"`
-
-	// Sequences used to skip duplicated messages
-	SequenceSend    uint32 `yaml:"sequence_send"`
-	SequenceReceive uint32 `yaml:"sequence_receive"`
+	transport transport.Transport
+	handlers  []Handler
 }
 
-// NewUnknownDevice creates unknown device:
-// - names set to "unknown"
-// - device handler set to "no handler"
-func NewUnknownDevice(id uint64) *Device {
+// NewDevice creates "unknown" device.
+func NewDevice(id uint64) *Device {
 	return &Device{
 		ID:           id,
 		Name:         "Unknown Device",
 		Manufacturer: "Unknown",
-		Handler:      &handlers.NoHandler{},
-		HandlerName:  "NoHandler",
 	}
 }
 
-// IsUnknown checks device's handler and returns true if it is set to NoHandler
-func (d *Device) IsUnknown() bool {
-	if _, ok := d.Handler.(*handlers.NoHandler); !ok {
-		return true
+// AddDeviceHandler sets new device handler
+func (dev *Device) AddDeviceHandler(handler Handler) error {
+	// Ensure that new handler is in present yet
+	for _, value := range dev.handlers {
+		if handler.GetName() == value.GetName() {
+			return fmt.Errorf("Handler '%s' already exists in device %x",
+				handler.GetName(), dev.ID)
+		}
 	}
-	return false
+
+	dev.handlers = append(dev.handlers, handler)
+	handler.AddDevice(dev)
+
+	return nil
+}
+
+// SetTransport sets new transport
+func (dev *Device) SetTransport(transport transport.Transport) {
+	dev.transport = transport
+}
+
+// Handlers return array of associated device's handlers
+func (dev *Device) Handlers() []Handler {
+	return dev.handlers
+}
+
+// Transport returns device's handler
+func (dev *Device) Transport() transport.Transport {
+	return dev.transport
 }

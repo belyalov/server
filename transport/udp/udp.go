@@ -7,15 +7,11 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/mitchellh/mapstructure"
-
 	"github.com/open-iot-devices/server/transport"
 )
 
 // UDP implements server/transport interface
 type UDP struct {
-	transport.BaseTransport
-
-	// Configuration parameters
 	Listen string
 	Remote string
 
@@ -28,14 +24,7 @@ type UDP struct {
 // NewUDP creates new instance of UDP transport
 func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
 	udp := &UDP{
-		BaseTransport: transport.BaseTransport{
-			Name: name,
-		},
-	}
-
-	// If no configuration present - bypass mode
-	if cfg == nil {
-		return udp, nil
+		name: name,
 	}
 
 	// Map / verify configuration
@@ -55,6 +44,11 @@ func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
 	}
 
 	return udp, err
+}
+
+// GetName returns transport name
+func (r *UDP) GetName() string {
+	return r.name
 }
 
 // Start starts UDP server, non blocking call

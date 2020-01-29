@@ -4,7 +4,6 @@ import (
 	"bytes"
 
 	"github.com/golang/glog"
-
 	"github.com/open-iot-devices/server/transport"
 )
 
