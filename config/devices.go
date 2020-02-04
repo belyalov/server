@@ -85,13 +85,14 @@ func SaveDevicesToFile(filename string) error {
 	if err != nil {
 		return err
 	}
+	writer := bufio.NewWriter(fd)
 	defer fd.Close()
+	defer writer.Flush()
 
 	// YAML header (to avoid EOF when no devices added)
-	fd.WriteString("---")
-
-	devices := device.GetAllDevices()
-	return saveDevicesToYaml(bufio.NewWriter(fd), devices)
+	writer.WriteString("---\n")
+	// Write YAML
+	return saveDevicesToYaml(writer, device.GetAllDevices())
 }
 
 func saveDevicesToYaml(writer io.Writer, devices []*device.Device) error {
