@@ -25,3 +25,8 @@ func MustAddTransport(transport Transport) {
 
 	transportByName[transport.GetName()] = transport
 }
+
+// GetAllTransports returns map of all registered transports
+func GetAllTransports() map[string]Transport {
+	return transportByName
+}
