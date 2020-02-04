@@ -36,3 +36,8 @@ func MustAddDeviceHandler(dev device.Handler) {
 
 	deviceHandlersByName[dev.GetName()] = dev
 }
+
+// GetAllHandlers returns all registered device handlers
+func GetAllHandlers() map[string]device.Handler {
+	return deviceHandlersByName
+}

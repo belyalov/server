@@ -1,6 +1,9 @@
 package config
 
-import "github.com/open-iot-devices/server/device"
+import (
+	"github.com/golang/protobuf/proto"
+	"github.com/open-iot-devices/server/device"
+)
 
 type mockHandler struct {
 	name string
@@ -15,7 +18,7 @@ func (m *mockHandler) GetName() string {
 	return m.name
 }
 
-func (*mockHandler) ProcessMessage() error {
+func (*mockHandler) ProcessMessage(msg proto.Message) error {
 	return nil
 }
 

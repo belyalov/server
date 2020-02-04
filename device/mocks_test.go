@@ -1,5 +1,7 @@
 package device
 
+import "github.com/golang/protobuf/proto"
+
 type mockHandler struct {
 	name    string
 	history []*Device
@@ -14,7 +16,7 @@ func (m *mockHandler) GetName() string {
 	return m.name
 }
 
-func (*mockHandler) ProcessMessage() error {
+func (*mockHandler) ProcessMessage(msg proto.Message) error {
 	return nil
 }
 
