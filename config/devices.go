@@ -17,10 +17,18 @@ import (
 
 // LoadDevicesFromFile reads and parses YAML devices configuration
 func LoadDevicesFromFile(filename string) error {
+	// Non existing config file is not an error
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+	}
+
 	fd, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
+	defer fd.Close()
 
 	devices, err := loadDevicesFromYaml(bufio.NewReader(fd))
 	if err != nil {
@@ -77,6 +85,10 @@ func SaveDevicesToFile(filename string) error {
 	if err != nil {
 		return err
 	}
+	defer fd.Close()
+
+	// YAML header (to avoid EOF when no devices added)
+	fd.WriteString("---")
 
 	devices := device.GetAllDevices()
 	return saveDevicesToYaml(bufio.NewWriter(fd), devices)
