@@ -12,8 +12,9 @@ import (
 
 func TestReadWriteSingleMessage(t *testing.T) {
 	original := &openiot.Message{
-		DeviceId: 123456,
-		Sequence: 3333,
+		Crc:         12222,
+		MessageType: 1,
+		Sequence:    3333,
 	}
 
 	// Write message
@@ -55,8 +56,9 @@ func TestWriteSingleMessage(t *testing.T) {
 
 func TestReadSingleMessage(t *testing.T) {
 	original := &openiot.Message{
-		DeviceId: 10000,
-		Sequence: 11111,
+		Crc:         12,
+		MessageType: 11111,
+		Sequence:    11111,
 	}
 
 	var buffer bytes.Buffer
@@ -113,32 +115,4 @@ func TestAddPadding(t *testing.T) {
 	buf.Write(tmp)
 	assert.NoError(t, addPadding(&buf))
 	assert.Equal(t, 32, buf.Len())
-}
-
-func TestEncodeDecode(t *testing.T) {
-	msg1 := &openiot.SystemJoinRequest{
-		DhP: 10,
-		DhG: 100000,
-		DhA: []uint32{1, 2, 3},
-	}
-	msg2 := &openiot.SystemJoinResponse{
-		DhB: []uint32{11, 22, 33},
-	}
-
-	// Encrypt messages
-	var buf bytes.Buffer
-	key := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
-	iv := key
-	assert.NoError(t, EncryptAndWriteMessages(&buf, key, iv, msg1, msg2))
-
-	// Decrypt
-	res1 := &openiot.SystemJoinRequest{}
-	res2 := &openiot.SystemJoinResponse{}
-
-	assert.NoError(t, DecryptAndReadMessages(&buf, key, iv, res1, res2))
-
-	// Ensure that decoded / deserialized messages match
-	res1.XXX_sizecache = msg1.XXX_sizecache
-	res2.XXX_sizecache = msg2.XXX_sizecache
-	assert.Equal(t, msg1, res1)
 }
