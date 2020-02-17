@@ -19,6 +19,8 @@ func ProcessMessage(message *Message) error {
 	buffer := bytes.NewBuffer(message.Payload)
 	glog.Infof("packet: %v", buffer.String())
 
+	// First message is openiot.Header and it is always unencrypted
+
 	// // Read HeaderMessage (always non-encrypted)
 	// header := &openiot.HeaderMessage{}
 	// err := encoding.DeserializeSingleMessage(buffer, header)
