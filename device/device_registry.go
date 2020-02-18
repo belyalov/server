@@ -7,7 +7,6 @@ import (
 
 var devicesByID map[uint64]*Device
 var deviceLock sync.RWMutex
-var lastDevicesData []byte
 
 // FindDeviceByID looks up device by id.
 // Returns Device or nil if not found
@@ -42,6 +41,11 @@ func ReplaceAllDevicesWith(devices []*Device) {
 	for _, dev := range devices {
 		devicesByID[dev.ID] = dev
 	}
+}
+
+// DeleteAllDevices deletes all registered devices
+func DeleteAllDevices() {
+	ReplaceAllDevicesWith(nil)
 }
 
 // DeleteDeviceByID deletes device from registry

@@ -10,11 +10,11 @@ func TestDeviceHandler(t *testing.T) {
 	handler := &mockHandler{}
 
 	dev := NewDevice(1111)
-	err := dev.AddDeviceHandler(handler)
+	err := dev.AddHandler(handler)
 	assert.NoError(t, err)
 
 	// Add the same handler
-	err = dev.AddDeviceHandler(handler)
+	err = dev.AddHandler(handler)
 	assert.Error(t, err)
 
 	// Device handler's array is correct

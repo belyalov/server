@@ -7,7 +7,7 @@ import (
 )
 
 func TestDeviceRegistry(t *testing.T) {
-	ReplaceAllDevicesWith(nil)
+	DeleteAllDevices()
 
 	dev := NewDevice(111)
 
@@ -23,4 +23,9 @@ func TestDeviceRegistry(t *testing.T) {
 	// Negative: no such device
 	assert.Nil(t, FindDeviceByID(55666666))
 	assert.Error(t, DeleteDeviceByID(55666666))
+
+	// Replace all devices
+	ReplaceAllDevicesWith([]*Device{NewDevice(222)})
+	assert.Nil(t, FindDeviceByID(111))
+	assert.NotNil(t, FindDeviceByID(222))
 }

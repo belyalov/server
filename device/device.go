@@ -1,6 +1,7 @@
 package device
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/open-iot-devices/server/transport"
@@ -16,12 +17,13 @@ type Device struct {
 	ProductURL      string   `yaml:"product_url"`
 	ProtobufURL     string   `yaml:"protobuf_url"`
 	KeyString       string   `yaml:"key"`
-	Key             []byte   `yaml:"-" mapstructure:"-"`
 	SequenceSend    uint32   `yaml:"sequence_send"`
 	SequenceReceive uint32   `yaml:"sequence_receive"`
 	HandlerNames    []string `yaml:"handlers"`
 	TransportName   string   `yaml:"transport"`
+	Protobufs       []string `yaml:"messages"`
 
+	key       []byte
 	transport transport.Transport
 	handlers  []Handler
 }
@@ -30,13 +32,14 @@ type Device struct {
 func NewDevice(id uint64) *Device {
 	return &Device{
 		ID:           id,
+		IDhex:        fmt.Sprintf("0x%x", id),
 		Name:         "Unknown Device",
 		Manufacturer: "Unknown",
 	}
 }
 
-// AddDeviceHandler sets new device handler
-func (dev *Device) AddDeviceHandler(handler Handler) error {
+// AddHandler sets new device handler
+func (dev *Device) AddHandler(handler Handler) error {
 	// Ensure that new handler is in present yet
 	for _, value := range dev.handlers {
 		if handler.GetName() == value.GetName() {
@@ -46,19 +49,32 @@ func (dev *Device) AddDeviceHandler(handler Handler) error {
 	}
 
 	dev.handlers = append(dev.handlers, handler)
+	dev.HandlerNames = append(dev.HandlerNames, handler.GetName())
 	handler.AddDevice(dev)
 
 	return nil
 }
 
-// SetTransport sets new transport
-func (dev *Device) SetTransport(transport transport.Transport) {
-	dev.transport = transport
-}
-
 // Handlers return array of associated device's handlers
 func (dev *Device) Handlers() []Handler {
 	return dev.handlers
+}
+
+// SetKey set device's encryption key
+func (dev *Device) SetKey(key []byte) {
+	dev.key = key
+	dev.KeyString = hex.EncodeToString(key)
+}
+
+// Key returns current device's encryption key
+func (dev *Device) Key() []byte {
+	return dev.key
+}
+
+// SetTransport sets new transport
+func (dev *Device) SetTransport(transport transport.Transport) {
+	dev.transport = transport
+	dev.TransportName = transport.GetName()
 }
 
 // Transport returns device's handler
