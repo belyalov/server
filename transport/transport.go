@@ -4,6 +4,7 @@ package transport
 // UDP, TCP, USB, etc
 type Transport interface {
 	GetName() string
+	GetTypeName() string
 	Start() error
 	Stop()
 

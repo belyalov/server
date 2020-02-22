@@ -2,11 +2,9 @@ package device
 
 import (
 	"fmt"
-	"sync"
 )
 
-var handlersByName map[string]Handler
-var handlersInit sync.Once
+var handlersByName = map[string]Handler{}
 
 // FindHandlerByName lookups device by name. Returns nil if not found.
 func FindHandlerByName(name string) Handler {
@@ -16,9 +14,6 @@ func FindHandlerByName(name string) Handler {
 // MustAddHandler adds new device handler into registry
 // Panics in case of error
 func MustAddHandler(dev Handler) {
-	handlersInit.Do(func() {
-		handlersByName = make(map[string]Handler)
-	})
 	if _, ok := handlersByName[dev.GetName()]; ok {
 		panic(fmt.Sprintf("Device Handler '%s' already exists.", dev.GetName()))
 	}

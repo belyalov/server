@@ -6,7 +6,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.3.3
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/open-iot-devices/protobufs v0.0.0-20200217033114-1fa8f0a9b5f8
+	github.com/open-iot-devices/protobufs v0.0.0-20200217192350-43b5f1596a46
 	github.com/stretchr/testify v1.4.0
 	gopkg.in/yaml.v2 v2.2.8
 )

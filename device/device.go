@@ -3,7 +3,9 @@ package device
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/open-iot-devices/server/transport"
 )
 
@@ -80,4 +82,41 @@ func (dev *Device) SetTransport(transport transport.Transport) {
 // Transport returns device's handler
 func (dev *Device) Transport() transport.Transport {
 	return dev.transport
+}
+
+// fixParameters re-calculates non YAMLified parameters
+// e.g. key is stored as string, but bytes are used here
+func (dev *Device) fixParameters() error {
+	// Set ID from hex string
+	if id, err := strconv.ParseUint(dev.IDhex, 0, 64); err == nil {
+		dev.ID = id
+	} else {
+		return err
+	}
+	// Setup Key from hex string representation
+	if key, err := hex.DecodeString(dev.KeyString); err == nil {
+		dev.key = key
+	} else {
+		return err
+	}
+	// Setup transport
+	if transport := transport.FindTransportByName(dev.TransportName); transport != nil {
+		dev.SetTransport(transport)
+	}
+	// Check that device's protobufs are registered
+	for _, name := range dev.Protobufs {
+		if proto.MessageType(name) == nil {
+			return fmt.Errorf("unknown protobuf '%s'", name)
+		}
+	}
+	// Setup handlers
+	for _, name := range dev.HandlerNames {
+		if handler := FindHandlerByName(name); handler != nil {
+			dev.handlers = append(dev.handlers, handler)
+		} else {
+			return fmt.Errorf("unknown handler '%s'", name)
+		}
+	}
+
+	return nil
 }

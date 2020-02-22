@@ -22,6 +22,8 @@ github.com/open-iot-devices/protobufs v0.0.0-20200127013843-ef5c7a3ac568 h1:mwM7
 github.com/open-iot-devices/protobufs v0.0.0-20200127013843-ef5c7a3ac568/go.mod h1:G7SyJAadS5oPEEBAESgNRK+3GUcJyqs+ehCmXiVd86o=
 github.com/open-iot-devices/protobufs v0.0.0-20200217033114-1fa8f0a9b5f8 h1:uUF6KSdPy+FHHmBJKoPauPZJPpbWD8plAIxDJpQ8nPA=
 github.com/open-iot-devices/protobufs v0.0.0-20200217033114-1fa8f0a9b5f8/go.mod h1:G7SyJAadS5oPEEBAESgNRK+3GUcJyqs+ehCmXiVd86o=
+github.com/open-iot-devices/protobufs v0.0.0-20200217192350-43b5f1596a46 h1:D3lsnpWGsgpacGE5aThxzEr3RjUi2czNdgetuWneDD0=
+github.com/open-iot-devices/protobufs v0.0.0-20200217192350-43b5f1596a46/go.mod h1:G7SyJAadS5oPEEBAESgNRK+3GUcJyqs+ehCmXiVd86o=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0 h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=

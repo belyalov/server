@@ -2,10 +2,13 @@ package device
 
 import (
 	"fmt"
+	"io"
 	"sync"
+
+	"gopkg.in/yaml.v2"
 )
 
-var devicesByID map[uint64]*Device
+var devicesByID = map[uint64]*Device{}
 var deviceLock sync.RWMutex
 
 // FindDeviceByID looks up device by id.
@@ -31,21 +34,9 @@ func AddDevice(device *Device) error {
 	return nil
 }
 
-// ReplaceAllDevicesWith deletes all existing devices and
-// adds new devices provided array
-func ReplaceAllDevicesWith(devices []*Device) {
-	deviceLock.Lock()
-	defer deviceLock.Unlock()
-
-	devicesByID = make(map[uint64]*Device)
-	for _, dev := range devices {
-		devicesByID[dev.ID] = dev
-	}
-}
-
 // DeleteAllDevices deletes all registered devices
 func DeleteAllDevices() {
-	ReplaceAllDevicesWith(nil)
+	// ReplaceAllDevicesWith(nil)
 }
 
 // DeleteDeviceByID deletes device from registry
@@ -78,6 +69,48 @@ func GetAllDevices() []*Device {
 	return res
 }
 
-func init() {
-	devicesByID = make(map[uint64]*Device)
+// SaveDevices writes all registered transports in YAML
+// format using writer
+func SaveDevices(writer io.Writer) error {
+	deviceLock.RLock()
+	deviceLock.RUnlock()
+
+	// Flatten devices map into array
+	placeholder := make([]*Device, len(devicesByID))
+	index := 0
+	for _, dev := range devicesByID {
+		placeholder[index] = dev
+		index++
+	}
+
+	encoder := yaml.NewEncoder(writer)
+	return encoder.Encode(placeholder)
+}
+
+// LoadDevices reads and parses YAML configuration from file
+func LoadDevices(reader io.Reader) error {
+	// Decode YAML
+	var devices []*Device
+	decoder := yaml.NewDecoder(reader)
+	decoder.SetStrict(true)
+	if err := decoder.Decode(&devices); err != nil {
+		return err
+	}
+
+	// Restore some non YAMLified parameters
+	for _, dev := range devices {
+		if err := dev.fixParameters(); err != nil {
+			return err
+		}
+	}
+
+	// Replace registry with new set of devices
+	deviceLock.Lock()
+	devicesByID = map[uint64]*Device{}
+	for _, dev := range devices {
+		devicesByID[dev.ID] = dev
+	}
+	deviceLock.Unlock()
+
+	return nil
 }

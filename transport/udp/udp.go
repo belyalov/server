@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-iot-devices/server/transport"
 )
+
+const typeName = "udp"
 
 // UDP implements server/transport interface
 type UDP struct {
@@ -22,90 +23,95 @@ type UDP struct {
 }
 
 // NewUDP creates new instance of UDP transport
-func NewUDP(name string, cfg interface{}) (transport.Transport, error) {
-	udp := &UDP{
+func NewUDP(name string) transport.Transport {
+	return &UDP{
 		name: name,
 	}
+}
 
-	// Map / verify configuration
-	err := mapstructure.Decode(cfg, udp)
-	if udp.Listen == "" {
-		return nil, errors.New("config parameter udp.ListenAddress is required")
+// GetName returns transport name
+func (s *UDP) GetName() string {
+	return s.name
+}
+
+// GetTypeName returns type name of transport
+func (s *UDP) GetTypeName() string {
+	return typeName
+}
+
+// Start starts UDP server in background mode
+func (s *UDP) Start() error {
+	if s.Listen == "" {
+		return errors.New("ListenAddress parameter required")
 	}
-
 	// Resolve LoRa gateway address, if any
-	if udp.Remote != "" {
-		udp.resolvedAddress, err = net.ResolveUDPAddr("udp", udp.Remote)
-		if err != nil {
-			return nil, err
+	if s.Remote != "" {
+		if addr, err := net.ResolveUDPAddr("udp", s.Remote); err != nil {
+			s.resolvedAddress = addr
+		} else {
+			return err
 		}
 	} else {
 		glog.Info("UDP gateway address unset, packets will not be delivered to devices back")
 	}
-
-	return udp, err
-}
-
-// GetName returns transport name
-func (r *UDP) GetName() string {
-	return r.name
-}
-
-// Start starts UDP server, non blocking call
-func (r *UDP) Start() error {
 	// Create UDP listening socket
-	var err error
-	if r.socket, err = net.ListenPacket("udp", r.Listen); err != nil {
+	sock, err := net.ListenPacket("udp", s.Listen)
+	if err != nil {
 		return err
 	}
-	glog.Infof("%s: UDP server started at %s", r.GetName(), r.Listen)
+	s.socket = sock
+	glog.Infof("UDP server started at %s", sock)
 
 	// Start UDP listener (with capability of buffer one packet)
-	r.receiveCh = make(chan []byte, 1)
-	go r.serve()
+	s.receiveCh = make(chan []byte, 1)
+	go s.serve()
 
 	return nil
 }
 
 // Stop performs graceful shutdown of UDP server
-func (r *UDP) Stop() {
+func (s *UDP) Stop() {
 	// Goroutine will be canceled once socket.ReadFrom returns with error
-	r.socket.Close()
+	s.socket.Close()
 }
 
 // Receive returns channel where UDP will send received packets to.
-func (r *UDP) Receive() <-chan []byte {
-	return r.receiveCh
+func (s *UDP) Receive() <-chan []byte {
+	return s.receiveCh
 }
 
 // Send simply sends payload as UDP packet to address from configuration
-func (r *UDP) Send(packet []byte) error {
-	sent, err := r.socket.WriteTo(packet, r.resolvedAddress)
+func (s *UDP) Send(packet []byte) error {
+	sent, err := s.socket.WriteTo(packet, s.resolvedAddress)
 	if err != nil {
 		return err
 	}
 	if sent != len(packet) {
-		glog.Warningf("%s: packet truncated! Sent only %d of %d",
-			r.GetName(), sent, len(packet))
+		glog.Warningf("packet truncated, sent only %d of %d",
+			sent, len(packet))
 	}
 
 	return nil
 }
 
-func (r *UDP) serve() {
+func (s *UDP) serve() {
 	buf := make([]byte, 65535)
 
 	for {
 		// ReadFrom is blocking call unless socket closed
-		n, _, err := r.socket.ReadFrom(buf)
+		n, _, err := s.socket.ReadFrom(buf)
 		if err != nil {
 			// Terminate goroutine if socket closed
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				return
 			}
-			glog.Infof("%s: readFrom failed: %v", r.GetName(), err)
+			glog.Infof("%s: readFrom failed: %v", s.GetName(), err)
 			continue
 		}
-		r.receiveCh <- buf[:n]
+		s.receiveCh <- buf[:n]
 	}
+}
+
+func init() {
+	transport.MustAddTransportType(typeName, NewUDP)
 }

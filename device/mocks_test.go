@@ -30,6 +30,10 @@ func (m *mockTransport) GetName() string {
 	return m.name
 }
 
+func (m *mockTransport) GetTypeName() string {
+	return "mock"
+}
+
 func (m *mockTransport) Start() error {
 	return nil
 }
