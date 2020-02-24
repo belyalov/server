@@ -2,8 +2,12 @@ package processor
 
 import (
 	"bytes"
+	"fmt"
 
-	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
+	"github.com/open-iot-devices/protobufs/go/openiot"
+	"github.com/open-iot-devices/server/device"
+	"github.com/open-iot-devices/server/encode"
 	"github.com/open-iot-devices/server/transport"
 )
 
@@ -15,38 +19,102 @@ type Message struct {
 
 // ProcessMessage decodes / deserializes raw packet and calls appropriate handler
 func ProcessMessage(message *Message) error {
-	glog.Infof("Got packet from %s", message.Source.GetName())
+	// glog.Infof("Got packet from %s", message.Source.GetName())
 	buffer := bytes.NewBuffer(message.Payload)
-	glog.Infof("packet: %v", buffer.String())
 
-	// First message is openiot.Header and it is always unencrypted
+	// First message is always unencrypted openiot.Header
+	hdr := &openiot.Header{}
+	if err := encode.ReadSingleMessage(buffer, hdr); err != nil {
+		return err
+	}
 
-	// // Read HeaderMessage (always non-encrypted)
-	// header := &openiot.HeaderMessage{}
-	// err := encoding.DeserializeSingleMessage(buffer, header)
-	// if err != nil {
-	// 	return err
-	// }
+	var response proto.Message
+	var err error
 
-	// // Zero DeviceID is not valid
-	// if header.DeviceId == 0 {
-	// 	return fmt.Errorf("Invalid Packet Header: zero DeviceID")
-	// }
+	// Handle message
+	if dev := device.FindDeviceByID(hdr.DeviceId); dev != nil {
+		// Registered devices
+	} else {
+		// If device is unknown - it may indicate new device which is trying to
+		// join network
+		response, err = handleJoinNetwork(hdr, buffer)
+	}
 
-	// // Special case for System Messages:
-	// if header.SystemMessage {
-	// 	sysMsg := &openiot.SystemMessage{}
-	// 	err = encoding.DeserializeSingleMessage(buffer, sysMsg)
+	// Process message handle errors here
+	if err != nil {
+		return nil
+	}
+
+	// Send response, if needed
+	if response != nil {
+		// send
+	}
+
+	return err
+}
+
+
+
+	// Create "placeholder" for all possible
+	// proto messages for this particular device
+	// msgs := make([]proto.Message, len(dev.Protobufs)+1)
+	// msgs[0] = &openiot.Message{}
+	// for index, name := range dev.Protobufs {
+	// 	msg, err := createProtoFromName(name)
 	// 	if err != nil {
 	// 		return err
 	// 	}
-	// 	return processSystemMessage(wire, header, sysMsg)
+	// 	msgs[index+1] = msg
+	// }
+	// // Decrypt (if needed) then read all other messages
+	// switch x := hdr.Encryption.(type) {
+	// case *openiot.Header_Plain:
+	// 	if err := encode.ReadPlain(buffer, msgs...); err != nil {
+	// 		return err
+	// 	}
+	// case *openiot.Header_AesEcb:
+	// 	if err := encode.DecryptAndReadECB(buffer, dev.Key(), msgs...); err != nil {
+	// 		return err
+	// 	}
+	// default:
+	// 	return fmt.Errorf("Unsupported encryption type %T", x)
 	// }
 
-	// // Device based message
+	// Decrypt (if needed) then read all other messages
+	// fmt.Println(dev.MessageNames)
+	// mt := proto.MessageType("openiot.SystemJoinRequest")
+	// // tp := &openiot.SystemJoinRequest{}
+	// // inst := reflect.New(tp).Elem().Interface()
+	// // inst := reflect.Zero(tp).Interface()
+	// inst := reflect.New(mt.Elem()).Interface().(proto.Message)
 
-	return nil
+	// msgs := dev.Messages()
+	// fmt.Println(msgs)
+
+	// return fmt.Errorf("ok")
+
+	// // De-serialize openiot.Message - basically metadata of followed message(s)
+	// msg := &openiot.Message{}
+	// if err := encode.ReadSingleMessage(buffer, msg); err != nil {
+	// 	return err
+	// }
+	// // De-serialize all followed messages and run them through all device's handler
+	// // Ensure that all messages are known to the system
+	// for _, name := range msg.Names {
+	// 	if proto.MessageType(name) == nil {
+	// 		return fmt.Errorf("OpenIoT Message '%s' is not supported", name)
+	// 	}
+	// }
+
+	// return nil
 }
+
+// func createProtoFromName(name string) (proto.Message, error) {
+// 	if msgType := proto.MessageType(name); msgType != nil {
+// 		return reflect.New(msgType.Elem()).Interface().(proto.Message), nil
+// 	}
+// 	return nil, fmt.Errorf("Proto message '%s' is not registered", name)
+// }
 
 // func processSystemMessage(
 // 	wire transport.Transport, header *openiot.HeaderMessage, msg *openiot.SystemMessage) error {
