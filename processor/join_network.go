@@ -16,7 +16,7 @@ var pendingDevices = map[uint64][]byte{}
 
 func handleJoinNetwork(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, error) {
 	// Deserialize / Verify JoinRequest
-	jreq := &openiot.SystemJoinRequest{}
+	jreq := &openiot.KeyExchangeRequest{}
 	if err := encode.ReadSingleMessage(buf, jreq); err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func handleJoinNetwork(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, e
 	private, public := generateDiffieHellman(jreq.DhG, jreq.DhP)
 	pendingDevices[hdr.DeviceId] = calculateDiffieHellmanKey(jreq.DhP, jreq.DhA, private)
 
-	return &openiot.SystemJoinResponse{
+	return &openiot.KeyExchangeResponse{
 		DhB: public,
 	}, nil
 }

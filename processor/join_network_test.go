@@ -28,7 +28,7 @@ func TestKeyExchange(t *testing.T) {
 
 	// Generate Key Exchange request
 	privateA, publicA := generateDiffieHellman(dhG, dhP)
-	jreq := &openiot.SystemJoinRequest{
+	jreq := &openiot.KeyExchangeRequest{
 		DhG: dhG,
 		DhP: dhP,
 		DhA: publicA,
@@ -42,7 +42,7 @@ func TestKeyExchange(t *testing.T) {
 	require.NotNil(t, jresp)
 
 	// Calculate our key
-	key := calculateDiffieHellmanKey(jreq.DhP, jresp.(*openiot.SystemJoinResponse).DhB, privateA)
+	key := calculateDiffieHellmanKey(jreq.DhP, jresp.(*openiot.KeyExchangeResponse).DhB, privateA)
 
 	// Ensure that the same key is pending in the list
 	assert.Equal(t, key, pendingDevices[1])

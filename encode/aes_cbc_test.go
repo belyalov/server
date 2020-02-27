@@ -9,12 +9,12 @@ import (
 )
 
 func TestEncodeDecodeCBC(t *testing.T) {
-	msg1 := &openiot.SystemJoinRequest{
+	msg1 := &openiot.KeyExchangeRequest{
 		DhP: 10,
 		DhG: 100000,
 		DhA: []uint32{1, 2, 3},
 	}
-	msg2 := &openiot.SystemJoinResponse{
+	msg2 := &openiot.KeyExchangeResponse{
 		DhB: []uint32{11, 22, 33},
 	}
 
@@ -25,8 +25,8 @@ func TestEncodeDecodeCBC(t *testing.T) {
 	assert.NoError(t, WriteAndEncryptCBC(&buf, key, iv, msg1, msg2))
 
 	// Decrypt previously encrypted bytes
-	res1 := &openiot.SystemJoinRequest{}
-	res2 := &openiot.SystemJoinResponse{}
+	res1 := &openiot.KeyExchangeRequest{}
+	res2 := &openiot.KeyExchangeResponse{}
 	assert.NoError(t, DecryptAndReadCBC(&buf, key, iv, res1, res2))
 
 	// Ensure that decoded / deserialized messages match

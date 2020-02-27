@@ -12,9 +12,7 @@ import (
 
 func TestReadWriteSingleMessage(t *testing.T) {
 	original := &openiot.Message{
-		Crc:         12222,
-		MessageType: 1,
-		Sequence:    3333,
+		Sequence: 3333,
 	}
 
 	// Write message
@@ -56,9 +54,7 @@ func TestWriteSingleMessage(t *testing.T) {
 
 func TestReadSingleMessage(t *testing.T) {
 	original := &openiot.Message{
-		Crc:         12,
-		MessageType: 11111,
-		Sequence:    11111,
+		Sequence: 11111,
 	}
 
 	var buffer bytes.Buffer
