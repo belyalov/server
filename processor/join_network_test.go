@@ -17,35 +17,41 @@ const (
 )
 
 func TestKeyExchange(t *testing.T) {
-	pendingDevices = map[uint64][]byte{}
+	keyExchangeCache.Clear()
 
 	hdr := &openiot.Header{
-		DeviceId: 1,
-		Encryption: &openiot.Header_Plain{
-			Plain: true,
-		},
+		DeviceId: 123,
+		Crc:      1212,
 	}
 
-	// Generate Key Exchange request
-	privateA, publicA := generateDiffieHellman(dhG, dhP)
-	jreq := &openiot.KeyExchangeRequest{
-		DhG: dhG,
-		DhP: dhP,
-		DhA: publicA,
+	// Try it few times: every request should override previously saved key
+	for i := 0; i < 5; i++ {
+		// Generate Key Exchange request
+		privateA, publicA := generateDiffieHellman(dhG, dhP)
+		jreq := &openiot.KeyExchangeRequest{
+			DhG: dhG,
+			DhP: dhP,
+			DhA: publicA,
+		}
+		var buf bytes.Buffer
+		encode.WriteSingleMessage(&buf, jreq)
+
+		// Run it
+		jresp, err := processKeyExchangeRequest(hdr, &buf)
+		require.NoError(t, err)
+		require.NotNil(t, jresp)
+
+		// Calculate our key
+		key := calculateDiffieHellmanKey(jreq.DhP, jresp.(*openiot.KeyExchangeResponse).DhB, privateA)
+
+		// Ensure that the same key is pending in the list
+		cached, ok := keyExchangeCache.Get(hdr.DeviceId)
+		assert.True(t, ok)
+		assert.Equal(t, key, cached)
 	}
-	var buf bytes.Buffer
-	encode.WriteSingleMessage(&buf, jreq)
 
-	// Run it
-	jresp, err := handleJoinNetwork(hdr, &buf)
-	require.NoError(t, err)
-	require.NotNil(t, jresp)
-
-	// Calculate our key
-	key := calculateDiffieHellmanKey(jreq.DhP, jresp.(*openiot.KeyExchangeResponse).DhB, privateA)
-
-	// Ensure that the same key is pending in the list
-	assert.Equal(t, key, pendingDevices[1])
+	// Finally only one key should be in cache
+	assert.Equal(t, 1, keyExchangeCache.Len())
 }
 
 func TestGenerateDiffieHellman(t *testing.T) {

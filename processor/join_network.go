@@ -6,26 +6,39 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/golang/groupcache/lru"
 	"github.com/golang/protobuf/proto"
 	"github.com/open-iot-devices/protobufs/go/openiot"
 	"github.com/open-iot-devices/server/encode"
 )
 
 // Temporary map of devices where SystemJoinResponse has sent
-var pendingDevices = map[uint64][]byte{}
+var keyExchangeCache = lru.New(128)
 
-func handleJoinNetwork(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, error) {
-	// Deserialize / Verify JoinRequest
-	jreq := &openiot.KeyExchangeRequest{}
-	if err := encode.ReadSingleMessage(buf, jreq); err != nil {
+func processUnknownDeviceMessage(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, error) {
+	if hdr.KeyExchange {
+		return processKeyExchangeRequest(hdr, buf)
+	}
+	return nil, nil
+}
+
+func processKeyExchangeRequest(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, error) {
+	// Deserialize KeyExchange request
+	request := &openiot.KeyExchangeRequest{}
+	if err := encode.ReadSingleMessage(buf, request); err != nil {
 		return nil, err
 	}
-	if len(jreq.DhA) != aes.BlockSize {
-		return nil, fmt.Errorf("Invalid DhA len, %d", len(jreq.DhA))
+	if len(request.DhA) != aes.BlockSize {
+		return nil, fmt.Errorf("Invalid DhA len, %d", len(request.DhA))
 	}
-	// Generate server part of Diffie-Hellman key exchange and save it
-	private, public := generateDiffieHellman(jreq.DhG, jreq.DhP)
-	pendingDevices[hdr.DeviceId] = calculateDiffieHellmanKey(jreq.DhP, jreq.DhA, private)
+
+	// Generate controller's part of Diffie-Hellman key exchange
+	private, public := generateDiffieHellman(request.DhG, request.DhP)
+	// Save it - to be able to decode JoinRequest
+	keyExchangeCache.Add(
+		hdr.DeviceId,
+		calculateDiffieHellmanKey(request.DhP, request.DhA, private),
+	)
 
 	return &openiot.KeyExchangeResponse{
 		DhB: public,

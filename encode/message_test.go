@@ -11,7 +11,7 @@ import (
 )
 
 func TestReadWriteSingleMessage(t *testing.T) {
-	original := &openiot.Message{
+	original := &openiot.MessageInfo{
 		Sequence: 3333,
 	}
 
@@ -20,7 +20,7 @@ func TestReadWriteSingleMessage(t *testing.T) {
 	require.NoError(t, WriteSingleMessage(&buffer, original))
 
 	// Read it
-	result := &openiot.Message{}
+	result := &openiot.MessageInfo{}
 	require.NoError(t, ReadSingleMessage(&buffer, result))
 	result.XXX_sizecache = original.XXX_sizecache
 
@@ -31,9 +31,7 @@ func TestReadWriteSingleMessage(t *testing.T) {
 func TestWriteSingleMessage(t *testing.T) {
 	msg := &openiot.Header{
 		DeviceId: 10000,
-		Encryption: &openiot.Header_Plain{
-			Plain: true,
-		},
+		Crc:      1232312,
 	}
 
 	// Serialize it using "delimited" approach
@@ -53,7 +51,7 @@ func TestWriteSingleMessage(t *testing.T) {
 }
 
 func TestReadSingleMessage(t *testing.T) {
-	original := &openiot.Message{
+	original := &openiot.MessageInfo{
 		Sequence: 11111,
 	}
 
@@ -66,7 +64,7 @@ func TestReadSingleMessage(t *testing.T) {
 	buffer.Write(serialized)
 
 	// Validate
-	result := &openiot.Message{}
+	result := &openiot.MessageInfo{}
 	require.NoError(t, ReadSingleMessage(&buffer, result))
 	result.XXX_sizecache = original.XXX_sizecache
 	require.Equal(t, original, result)
