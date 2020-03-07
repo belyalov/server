@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/open-iot-devices/protobufs/go/openiot"
 	"github.com/open-iot-devices/server/transport"
 )
 
@@ -24,6 +25,7 @@ type Device struct {
 	HandlerNames    []string `yaml:"handlers"`
 	TransportName   string   `yaml:"transport"`
 	Protobufs       []string `yaml:"messages"`
+	EncodingType    openiot.EncryptionType
 
 	key       []byte
 	transport transport.Transport
