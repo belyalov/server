@@ -15,7 +15,7 @@ func TestEncodeDecodeECB(t *testing.T) {
 		DhA: []uint32{1, 2, 3},
 	}
 	msg2 := &openiot.KeyExchangeResponse{
-		DhB: []uint32{11, 22, 33},
+		DhB: []uint32{11, 22, 33, 55, 66, 77},
 	}
 
 	// Encrypt messages
@@ -32,4 +32,5 @@ func TestEncodeDecodeECB(t *testing.T) {
 	res1.XXX_sizecache = msg1.XXX_sizecache
 	res2.XXX_sizecache = msg2.XXX_sizecache
 	assert.Equal(t, msg1, res1)
+	assert.Equal(t, msg2, res2)
 }
