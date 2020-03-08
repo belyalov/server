@@ -12,7 +12,7 @@ func TestEncodeDecodeECB(t *testing.T) {
 	msg1 := &openiot.KeyExchangeRequest{
 		DhP: 10,
 		DhG: 100000,
-		DhA: []uint32{1, 2, 3},
+		DhA: []uint32{1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 31, 2, 31, 2, 31, 2, 3},
 	}
 	msg2 := &openiot.KeyExchangeResponse{
 		DhB: []uint32{11, 22, 33, 55, 66, 77},

@@ -27,10 +27,9 @@ func WriteAndEncryptECB(buffer *bytes.Buffer, key []byte, msgs ...proto.Message)
 	if err != nil {
 		return err
 	}
-	serializedBytes := serializedBuf.Bytes()
 	encrypted := make([]byte, serializedBuf.Len())
-	for i := 0; i < len(serializedBytes); i += aes.BlockSize {
-		block.Encrypt(encrypted[i:], serializedBytes[i:])
+	for i := 0; serializedBuf.Len() > 0; i += aes.BlockSize {
+		block.Encrypt(encrypted[i:], serializedBuf.Next(aes.BlockSize))
 	}
 
 	_, err = buffer.Write(encrypted)
@@ -50,7 +49,7 @@ func DecryptAndReadECB(buffer *bytes.Buffer, key []byte, msgs ...proto.Message) 
 		return err
 	}
 	decrypted := make([]byte, buffer.Len())
-	for i := 0; i <= buffer.Len(); i += aes.BlockSize {
+	for i := 0; buffer.Len() > 0; i += aes.BlockSize {
 		block.Decrypt(decrypted[i:], buffer.Next(aes.BlockSize))
 	}
 	// Deserialize messages
