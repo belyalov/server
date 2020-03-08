@@ -23,28 +23,40 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msgs ...proto.Message) ([]
 	// remove device tracks last received sequence and ignores messages
 	// that has already been processed.
 	dev.SequenceSend++
+
+	hdr := &openiot.Header{
+		DeviceId: dev.ID,
+	}
 	info := &openiot.MessageInfo{
 		Sequence: dev.SequenceSend,
 	}
-
-	// Serialize (with optional encryption) all messages:
-	// info, msgs...
-	var serializeBuf bytes.Buffer
 	allMsgs := append([]proto.Message{info}, msgs...)
-	if err := WriteAndEncrypt(&serializeBuf, dev.EncodingType, dev.Key(), allMsgs...); err != nil {
+
+	return MakeReadyToSendMessage(hdr, dev.EncodingType, dev.Key(), allMsgs...)
+}
+
+// MakeReadyToSendMessage makes message ready to be send
+// It does:
+// - Serializes all msgs
+// - Calculates CRC
+// - Optionally encrypts messages
+// - Writes all messages into buffer
+func MakeReadyToSendMessage(
+	hdr *openiot.Header, enc openiot.EncryptionType, key []byte, msgs ...proto.Message) ([]byte, error) {
+	// Serialize (with optional encryption) all messages:
+	var msgBuf bytes.Buffer
+	if err := WriteAndEncrypt(&msgBuf, enc, key, msgs...); err != nil {
 		return nil, err
 	}
-	// Make message header
-	hdr := &openiot.Header{
-		DeviceId: dev.ID,
-		Crc:      crc32.ChecksumIEEE(serializeBuf.Bytes()),
-	}
-	// Write all messages into one buffer
+
+	// Update CRC
+	hdr.Crc = crc32.ChecksumIEEE(msgBuf.Bytes())
+	// Write header + all [optionally encrypted] messages into one buffer
 	var buf bytes.Buffer
 	if err := WriteSingleMessage(&buf, hdr); err != nil {
 		return nil, err
 	}
-	if _, err := serializeBuf.WriteTo(&buf); err != nil {
+	if _, err := msgBuf.WriteTo(&buf); err != nil {
 		return nil, err
 	}
 
