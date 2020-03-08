@@ -3,6 +3,7 @@ package processor
 import (
 	"bytes"
 	"fmt"
+	"hash/crc32"
 
 	"github.com/open-iot-devices/protobufs/go/openiot"
 	"github.com/open-iot-devices/server/device"
@@ -25,6 +26,11 @@ func ProcessMessage(message *Message) error {
 	hdr := &openiot.Header{}
 	if err := encode.ReadSingleMessage(buf, hdr); err != nil {
 		return err
+	}
+
+	// Check CRC of message payload
+	if hdr.Crc != crc32.ChecksumIEEE(buf.Bytes()) {
+		return fmt.Errorf("CRC check failed")
 	}
 
 	// Process Network Join Requests
