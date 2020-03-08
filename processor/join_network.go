@@ -3,46 +3,108 @@ package processor
 import (
 	"bytes"
 	"crypto/aes"
+	"flag"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/golang/groupcache/lru"
-	"github.com/golang/protobuf/proto"
+
 	"github.com/open-iot-devices/protobufs/go/openiot"
+	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/encode"
+	"github.com/open-iot-devices/server/transport"
 )
 
-// Temporary map of devices where SystemJoinResponse has sent
-var keyExchangeCache = lru.New(128)
-
-func processUnknownDeviceMessage(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, error) {
-	if hdr.KeyExchange {
-		return processKeyExchangeRequest(hdr, buf)
-	}
-	return nil, nil
+type keyExchangeItem struct {
+	key            []byte
+	encryptionType openiot.EncryptionType
 }
 
-func processKeyExchangeRequest(hdr *openiot.Header, buf *bytes.Buffer) (proto.Message, error) {
-	// Deserialize KeyExchange request
+var flagServerName = flag.String("server.name", "Open IoT Server", "Name of this server")
+
+// Temporary map of devices where SystemJoinResponse was sent
+var keyExchangeCache = lru.New(128)
+
+func processKeyExchangeRequest(
+	hdr *openiot.Header, buf *bytes.Buffer, transport transport.Transport) error {
+
+	// Deserialize KeyExchangerequest
 	request := &openiot.KeyExchangeRequest{}
 	if err := encode.ReadSingleMessage(buf, request); err != nil {
-		return nil, err
+		return err
 	}
 	if len(request.DhA) != aes.BlockSize {
-		return nil, fmt.Errorf("Invalid DhA len, %d", len(request.DhA))
+		return fmt.Errorf("Invalid DhA len, %d", len(request.DhA))
+	}
+	if _, ok := openiot.EncryptionType_name[int32(request.EncryptionType)]; !ok {
+		return fmt.Errorf("Unknown encoding %v", request.EncryptionType)
+	}
+	// Generate controller's part of Diffie-Hellman key exchange
+	// and keep it until JoinRequest arrives
+	private, public := generateDiffieHellman(request.DhG, request.DhP)
+	entry := &keyExchangeItem{
+		key:            calculateDiffieHellmanKey(request.DhP, request.DhA, private),
+		encryptionType: request.EncryptionType,
+	}
+	keyExchangeCache.Add(hdr.DeviceId, entry)
+
+	// Send KeyExchangeResponse: always un-encrypted
+	response := &openiot.KeyExchangeResponse{
+		DhB: public,
+	}
+	var sendBuf bytes.Buffer
+	if err := encode.WritePlain(&sendBuf, hdr, response); err != nil {
+		return err
 	}
 
-	// Generate controller's part of Diffie-Hellman key exchange
-	private, public := generateDiffieHellman(request.DhG, request.DhP)
-	// Save it - to be able to decode JoinRequest
-	keyExchangeCache.Add(
-		hdr.DeviceId,
-		calculateDiffieHellmanKey(request.DhP, request.DhA, private),
-	)
+	return transport.Send(sendBuf.Bytes())
+}
 
-	return &openiot.KeyExchangeResponse{
-		DhB: public,
-	}, nil
+func processJoinRequest(
+	hdr *openiot.Header, buf *bytes.Buffer, transport transport.Transport) error {
+
+	var err error
+	joinRequest := &openiot.JoinRequest{}
+
+	// JoinRequest maybe encrypted or not:
+	// - When encrypted - device must complete KeyExchange before
+	// - Otherwise it is considered as possible un-encrypted join request
+	keyInfo, ok := keyExchangeCache.Get(hdr.DeviceId)
+	if ok {
+		entry := keyInfo.(*keyExchangeItem)
+		err = encode.DecryptAndRead(buf, entry.encryptionType, entry.key, joinRequest)
+	} else {
+		err = encode.ReadPlain(buf, joinRequest)
+	}
+	if err != nil {
+		// If decrypt / de-serialize failed
+		return err
+	}
+
+	// Add / Update device into registry
+	dev := device.FindDeviceByID(hdr.DeviceId)
+	if dev == nil {
+		dev = device.NewDevice(hdr.DeviceId)
+	}
+	dev.Name = joinRequest.Name
+	dev.Manufacturer = joinRequest.Manufacturer
+	dev.ProductURL = joinRequest.ProductUrl
+	dev.ProtobufURL = joinRequest.ProtobufUrl
+	// Ignore "Device Already Exists" error
+	_ = device.AddDevice(dev)
+
+	// Send response
+	response := &openiot.JoinResponse{
+		Name:      *flagServerName,
+		Timestamp: time.Now().Unix(),
+	}
+	var sendBuf bytes.Buffer
+	if err := encode.WritePlain(&sendBuf, hdr, response); err != nil {
+		return err
+	}
+
+	return transport.Send(sendBuf.Bytes())
 }
 
 // Diffie-Hellman implementation //
