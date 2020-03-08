@@ -30,26 +30,15 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msgs ...proto.Message) ([]
 	// Serialize (with optional encryption) all messages:
 	// info, msgs...
 	var serializeBuf bytes.Buffer
-	var err error
 	allMsgs := append([]proto.Message{info}, msgs...)
-
-	switch dev.EncodingType {
-	case openiot.EncryptionType_PLAIN:
-		err = WritePlain(&serializeBuf, allMsgs...)
-	case openiot.EncryptionType_AES_ECB:
-		err = WriteAndEncryptECB(&serializeBuf, dev.Key(), allMsgs...)
-	}
-	// Encrypt / serialize failed
-	if err != nil {
+	if err := WriteAndEncrypt(&serializeBuf, dev.EncodingType, dev.Key(), allMsgs...); err != nil {
 		return nil, err
 	}
-
 	// Make message header
 	hdr := &openiot.Header{
 		DeviceId: dev.ID,
 		Crc:      crc32.ChecksumIEEE(serializeBuf.Bytes()),
 	}
-
 	// Write all messages into one buffer
 	var buf bytes.Buffer
 	if err := WriteSingleMessage(&buf, hdr); err != nil {

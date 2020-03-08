@@ -41,7 +41,7 @@ func TestDeviceMessageNoEncryption(t *testing.T) {
 	msgInfo := &openiot.MessageInfo{}
 	joinReq := &openiot.JoinRequest{}
 	joinResp := &openiot.JoinResponse{}
-	err = ReadPlain(buf, msgInfo, joinReq, joinResp)
+	err = DecryptAndRead(buf, dev.EncodingType, dev.Key(), msgInfo, joinReq, joinResp)
 	require.NoError(t, err)
 
 	// Message Info (send sequence is correct)
@@ -82,7 +82,7 @@ func TestDeviceMessageAesECB(t *testing.T) {
 	// Read the rest: MessageInfo, JoinReq, JoinResp
 	msgInfo := &openiot.MessageInfo{}
 	joinReq := &openiot.JoinRequest{}
-	err = DecryptAndReadECB(buf, dev.Key(), msgInfo, joinReq)
+	err = DecryptAndRead(buf, dev.EncodingType, dev.Key(), msgInfo, joinReq)
 	require.NoError(t, err)
 
 	// Message Info (send sequence is correct)
