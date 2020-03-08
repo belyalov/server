@@ -19,8 +19,8 @@ func WritePlain(buffer *bytes.Buffer, msgs ...proto.Message) error {
 	return nil
 }
 
-// ReadPlain deserializes all messages using "delimited" approach.
-// It does not perfom any decryption
+// ReadPlain de-serializes all messages using "delimited" approach.
+// It does not perform any decryption
 func ReadPlain(buffer *bytes.Buffer, msgs ...proto.Message) error {
 	// Deserialize messages
 	for _, msg := range msgs {

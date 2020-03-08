@@ -29,15 +29,15 @@ func WriteAndEncryptCBC(buffer *bytes.Buffer, key, iv []byte, msgs ...proto.Mess
 		return err
 	}
 	encrypted := make([]byte, serializedBuf.Len())
-	encryptor := cipher.NewCBCEncrypter(block, iv)
-	encryptor.CryptBlocks(encrypted, serializedBuf.Bytes())
+	encrypter := cipher.NewCBCEncrypter(block, iv)
+	encrypter.CryptBlocks(encrypted, serializedBuf.Bytes())
 
 	_, err = buffer.Write(encrypted)
 	return err
 }
 
 // DecryptAndReadCBC decrypts buffer using AES-CBC with provided key and IV,
-// then deserializes all messages using "delimited" approach.
+// then de-serializes all messages using "delimited" approach.
 func DecryptAndReadCBC(buffer *bytes.Buffer, key, iv []byte, msgs ...proto.Message) error {
 	// AES encrypted message must be aligned to AES block size
 	if buffer.Len()%aes.BlockSize != 0 {
@@ -48,9 +48,9 @@ func DecryptAndReadCBC(buffer *bytes.Buffer, key, iv []byte, msgs ...proto.Messa
 	if err != nil {
 		return err
 	}
-	decryptor := cipher.NewCBCDecrypter(block, iv)
+	decrypter := cipher.NewCBCDecrypter(block, iv)
 	decrypted := make([]byte, buffer.Len())
-	decryptor.CryptBlocks(decrypted, buffer.Bytes())
+	decrypter.CryptBlocks(decrypted, buffer.Bytes())
 	// Deserialize messages
 	tmpBuf := bytes.NewBuffer(decrypted)
 	for _, msg := range msgs {
