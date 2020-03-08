@@ -40,6 +40,7 @@ var testConfig = `- id: "0x112233"
   - hmock
   transport: tmock
   messages: []
+  encodingtype: 0
 - id: "0x556677"
   name: Unknown Device
   manufacturer: Unknown
@@ -51,6 +52,7 @@ var testConfig = `- id: "0x112233"
   handlers: []
   transport: ""
   messages: []
+  encodingtype: 0
 `
 
 func TestDeviceRegistryLoadSave(t *testing.T) {
