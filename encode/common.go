@@ -32,7 +32,7 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msgs ...proto.Message) ([]
 	}
 	allMsgs := append([]proto.Message{info}, msgs...)
 
-	return MakeReadyToSendMessage(hdr, dev.EncodingType, dev.Key(), allMsgs...)
+	return MakeReadyToSendMessage(hdr, dev.EncryptionType, dev.Key(), allMsgs...)
 }
 
 // MakeReadyToSendMessage makes message ready to be send

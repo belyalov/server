@@ -41,7 +41,7 @@ func TestDeviceMessageNoEncryption(t *testing.T) {
 	msgInfo := &openiot.MessageInfo{}
 	joinReq := &openiot.JoinRequest{}
 	joinResp := &openiot.JoinResponse{}
-	err = DecryptAndRead(buf, dev.EncodingType, dev.Key(), msgInfo, joinReq, joinResp)
+	err = DecryptAndRead(buf, dev.EncryptionType, dev.Key(), msgInfo, joinReq, joinResp)
 	require.NoError(t, err)
 
 	// Message Info (send sequence is correct)
@@ -58,7 +58,7 @@ func TestDeviceMessageAesECB(t *testing.T) {
 	dev.SequenceSend = 10
 	// Setup encryption for device
 	dev.SetKey([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
-	dev.EncodingType = openiot.EncryptionType_AES_ECB
+	dev.EncryptionType = openiot.EncryptionType_AES_ECB
 
 	payload, err := MakeReadyToSendDeviceMessage(dev,
 		&openiot.JoinRequest{
@@ -82,7 +82,7 @@ func TestDeviceMessageAesECB(t *testing.T) {
 	// Read the rest: MessageInfo, JoinReq, JoinResp
 	msgInfo := &openiot.MessageInfo{}
 	joinReq := &openiot.JoinRequest{}
-	err = DecryptAndRead(buf, dev.EncodingType, dev.Key(), msgInfo, joinReq)
+	err = DecryptAndRead(buf, dev.EncryptionType, dev.Key(), msgInfo, joinReq)
 	require.NoError(t, err)
 
 	// Message Info (send sequence is correct)

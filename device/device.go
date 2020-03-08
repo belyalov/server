@@ -25,7 +25,7 @@ type Device struct {
 	HandlerNames    []string `yaml:"handlers"`
 	TransportName   string   `yaml:"transport"`
 	Protobufs       []string `yaml:"messages"`
-	EncodingType    openiot.EncryptionType
+	EncryptionType  openiot.EncryptionType
 
 	key       []byte
 	transport transport.Transport
