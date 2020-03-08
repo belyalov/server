@@ -29,6 +29,10 @@ var keyExchangeCache = lru.New(128)
 func processKeyExchangeRequest(
 	hdr *openiot.Header, buf *bytes.Buffer, transport transport.Transport) error {
 
+	if dev := device.FindDeviceByID(hdr.DeviceId); dev != nil {
+		return fmt.Errorf("Key Exchange request for already registered device 0x%x", hdr.DeviceId)
+	}
+
 	// Deserialize KeyExchangerequest
 	request := &openiot.KeyExchangeRequest{}
 	if err := encode.ReadSingleMessage(buf, request); err != nil {
@@ -64,21 +68,20 @@ func processKeyExchangeRequest(
 func processJoinRequest(
 	hdr *openiot.Header, buf *bytes.Buffer, transport transport.Transport) error {
 
-	var err error
-	joinRequest := &openiot.JoinRequest{}
-
 	// JoinRequest maybe encrypted or not:
 	// - When encrypted - device must complete KeyExchange before
-	// - Otherwise it is considered as possible un-encrypted join request
-	keyInfo, ok := keyExchangeCache.Get(hdr.DeviceId)
-	if ok {
-		entry := keyInfo.(*keyExchangeItem)
-		err = encode.DecryptAndRead(buf, entry.encryptionType, entry.key, joinRequest)
-	} else {
-		err = encode.ReadPlain(buf, joinRequest)
+	// - It maybe duplicate JoinRequest, in this case take device's encryption params
+	encParams := &keyExchangeItem{}
+	if dev := device.FindDeviceByID(hdr.DeviceId); dev != nil {
+		encParams.key = dev.Key()
+		encParams.encryptionType = dev.EncryptionType
+	} else if keyInfo, ok := keyExchangeCache.Get(hdr.DeviceId); ok {
+		encParams = keyInfo.(*keyExchangeItem)
 	}
-	if err != nil {
-		// If decrypt / de-serialize failed
+
+	// Read/Decode JoinRequest
+	joinRequest := &openiot.JoinRequest{}
+	if err := encode.DecryptAndRead(buf, encParams.encryptionType, encParams.key, joinRequest); err != nil {
 		return err
 	}
 
@@ -91,20 +94,18 @@ func processJoinRequest(
 	dev.Manufacturer = joinRequest.Manufacturer
 	dev.ProductURL = joinRequest.ProductUrl
 	dev.ProtobufURL = joinRequest.ProtobufUrl
-	// Ignore "Device Already Exists" error
-	_ = device.AddDevice(dev)
+	device.AddDevice(dev) // Ignore "Device Already Exists" error
 
 	// Send response
-	response := &openiot.JoinResponse{
+	joinResp := &openiot.JoinResponse{
 		Name:      *flagServerName,
 		Timestamp: time.Now().Unix(),
 	}
-	var sendBuf bytes.Buffer
-	if err := encode.WritePlain(&sendBuf, hdr, response); err != nil {
+	payload, err := encode.MakeReadyToSendMessage(hdr, encParams.encryptionType, encParams.key, joinResp)
+	if err != nil {
 		return err
 	}
-
-	return transport.Send(sendBuf.Bytes())
+	return transport.Send(payload)
 }
 
 // Diffie-Hellman implementation //
