@@ -7,7 +7,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/golang/protobuf v1.3.4
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/open-iot-devices/protobufs v0.0.0-20200309001340-06821896d1a6
+	github.com/open-iot-devices/protobufs v0.0.0-20200309023035-c0ea38584a0e
 	github.com/stretchr/testify v1.4.0
 	gopkg.in/yaml.v2 v2.2.8
 )

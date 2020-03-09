@@ -117,10 +117,11 @@ func TestJoinNoEncryption(t *testing.T) {
 	// When no encryption used device may simply send
 	// JoinRequest and get joined into network
 	joinReq := &openiot.JoinRequest{
-		Name:         "test1",
-		Manufacturer: "man1",
-		ProductUrl:   "url1",
-		ProtobufUrl:  "proto1",
+		Name:           "test1",
+		Manufacturer:   "man1",
+		ProductUrl:     "url1",
+		ProtobufUrl:    "proto1",
+		DefaultHandler: "someHandler",
 	}
 	joinResp, err := performJoinRequest(112233, openiot.EncryptionType_PLAIN, nil, joinReq)
 	require.NoError(t, err)
@@ -134,6 +135,7 @@ func TestJoinNoEncryption(t *testing.T) {
 	assert.Equal(t, joinReq.Manufacturer, dev.Manufacturer)
 	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
 	assert.Equal(t, joinReq.ProtobufUrl, dev.ProtobufURL)
+	assert.Equal(t, []string{joinReq.DefaultHandler}, dev.HandlerNames)
 }
 
 func TestJoinNoEncryptionDeviceExists(t *testing.T) {
@@ -144,16 +146,18 @@ func TestJoinNoEncryptionDeviceExists(t *testing.T) {
 		ID:           555,
 		Name:         "dummy",
 		SequenceSend: 10,
+		HandlerNames: []string{"existing_one"},
 	}
 	err := device.AddDevice(dev)
 	require.NoError(t, err)
 
 	// Send JoinRequest with the same device id
 	joinReq := &openiot.JoinRequest{
-		Name:         "test555",
-		Manufacturer: "man555",
-		ProductUrl:   "url555",
-		ProtobufUrl:  "proto555",
+		Name:           "test555",
+		Manufacturer:   "man555",
+		ProductUrl:     "url555",
+		ProtobufUrl:    "proto555",
+		DefaultHandler: "new_one",
 	}
 	joinResp, err := performJoinRequest(555, dev.EncryptionType, dev.Key(), joinReq)
 	require.NoError(t, err)
@@ -168,6 +172,7 @@ func TestJoinNoEncryptionDeviceExists(t *testing.T) {
 	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
 	assert.Equal(t, joinReq.ProtobufUrl, dev.ProtobufURL)
 	assert.Equal(t, uint32(10), dev.SequenceSend)
+	assert.Equal(t, []string{"existing_one", "new_one"}, dev.HandlerNames)
 }
 
 func TestJoinWithEncryption(t *testing.T) {

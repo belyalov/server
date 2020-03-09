@@ -85,11 +85,15 @@ func processJoinRequest(
 		return err
 	}
 
-	// Add / Update device into registry
+	// Add device into registry / update info if already present
 	dev := device.FindDeviceByID(hdr.DeviceId)
 	if dev == nil {
 		dev = device.NewDevice(hdr.DeviceId)
 	}
+	if joinRequest.DefaultHandler != "" {
+		dev.AddHandler(joinRequest.DefaultHandler)
+	}
+	dev.SetTransport(transport)
 	dev.Name = joinRequest.Name
 	dev.Manufacturer = joinRequest.Manufacturer
 	dev.ProductURL = joinRequest.ProductUrl
