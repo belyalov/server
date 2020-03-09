@@ -7,25 +7,34 @@ import (
 )
 
 func TestDeviceHandler(t *testing.T) {
-	handler := &mockHandler{}
+	handler := &mockHandler{
+		name: "mock",
+	}
+	MustAddHandler(handler)
+	defer DeleteHandler(handler.name)
 
+	// Add existing / non existing handlers
 	dev := NewDevice(1111)
-	err := dev.AddHandler(handler)
-	assert.NoError(t, err)
+	dev.AddHandler("non_existing")
+	dev.AddHandler("mock")
+	assert.Equal(t, []string{"non_existing", "mock"}, dev.HandlerNames)
+	assert.Equal(t, []Handler{handler}, dev.handlers)
 
-	// Ensure that set key actually updates 2 fields
 	dev.SetKey([]byte{1, 2, 3, 4, 55})
+	// Ensure that set key actually updates 2 fields
 	assert.Equal(t, "0102030437", dev.KeyString)
+	assert.Equal(t, []byte{1, 2, 3, 4, 55}, dev.Key())
 
-	// Add the same handler
-	err = dev.AddHandler(handler)
-	assert.Error(t, err)
+	// Add the same handlers, should be ignored
+	dev.AddHandler("mock")
+	dev.AddHandler("non_existing")
+	assert.Equal(t, []string{"non_existing", "mock"}, dev.HandlerNames)
+	assert.Equal(t, []Handler{handler}, dev.handlers)
 
-	// Device handler's array is correct
-	assert.Equal(t, []Handler{handler}, dev.Handlers())
-
-	// Ensure that handler.AddDevice is actually called
-	assert.Equal(t, []*Device{dev}, handler.history)
+	// Test SetHandler (overrides)
+	dev.SetHandler("mock")
+	assert.Equal(t, []string{"mock"}, dev.HandlerNames)
+	assert.Equal(t, []Handler{handler}, dev.handlers)
 }
 
 func TestDeviceTransport(t *testing.T) {

@@ -41,20 +41,30 @@ func NewDevice(id uint64) *Device {
 }
 
 // AddHandler sets new device handler
-func (dev *Device) AddHandler(handler Handler) error {
-	// Ensure that new handler is in present yet
-	for _, value := range dev.handlers {
-		if handler.GetName() == value.GetName() {
-			return fmt.Errorf("Handler '%s' already exists in device %x",
-				handler.GetName(), dev.ID)
+func (dev *Device) AddHandler(name string) {
+	for _, value := range dev.HandlerNames {
+		if name == value {
+			// Duplicate
+			return
 		}
 	}
 
-	dev.handlers = append(dev.handlers, handler)
-	dev.HandlerNames = append(dev.HandlerNames, handler.GetName())
-	handler.AddDevice(dev)
+	dev.HandlerNames = append(dev.HandlerNames, name)
 
-	return nil
+	if handler := FindHandlerByName(name); handler != nil {
+		dev.handlers = append(dev.handlers, handler)
+		handler.AddDevice(dev)
+	}
+}
+
+// SetHandler sets device handler (replaces existing)
+func (dev *Device) SetHandler(name string) {
+	dev.HandlerNames = []string{name}
+
+	if handler := FindHandlerByName(name); handler != nil {
+		dev.handlers = []Handler{handler}
+		handler.AddDevice(dev)
+	}
 }
 
 // Handlers return array of associated device's handlers
