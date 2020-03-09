@@ -64,13 +64,4 @@ func TestDeviceFixParameters(t *testing.T) {
 		err := device.fixParameters()
 		assert.EqualError(t, err, "unknown handler 'qqq'")
 	}
-	{
-		device := &Device{
-			IDhex:     "0x1",
-			KeyString: "01020304",
-			Protobufs: []string{"qqq"},
-		}
-		err := device.fixParameters()
-		assert.EqualError(t, err, "unknown protobuf 'qqq'")
-	}
 }

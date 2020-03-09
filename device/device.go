@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/open-iot-devices/protobufs/go/openiot"
 	"github.com/open-iot-devices/server/transport"
 )
@@ -24,7 +23,6 @@ type Device struct {
 	SequenceReceive uint32   `yaml:"sequence_receive"`
 	HandlerNames    []string `yaml:"handlers"`
 	TransportName   string   `yaml:"transport"`
-	Protobufs       []string `yaml:"messages"`
 	EncryptionType  openiot.EncryptionType
 
 	key       []byte
@@ -104,12 +102,6 @@ func (dev *Device) fixParameters() error {
 	// Setup transport
 	if transport := transport.FindTransportByName(dev.TransportName); transport != nil {
 		dev.SetTransport(transport)
-	}
-	// Check that device's protobufs are registered
-	for _, name := range dev.Protobufs {
-		if proto.MessageType(name) == nil {
-			return fmt.Errorf("unknown protobuf '%s'", name)
-		}
 	}
 	// Setup handlers
 	for _, name := range dev.HandlerNames {
