@@ -10,15 +10,15 @@ import (
 	"github.com/open-iot-devices/server/device"
 )
 
-// MakeReadyToSendDeviceMessage makes ready to be send message using device's settings.
+// MakeReadyToSendDeviceMessage makes ready to be send bytes using device's settings and proto message
 // It does:
-// - Serializes all msgs
+// - Serializes protobuf message
 // - Calculates CRC
 // - Makes MessageInfo header
 // - Encrypts all (if enabled on device)
-// - Makes MessageHeader
-// - Writes all messages into buffer
-func MakeReadyToSendDeviceMessage(dev *device.Device, msgs ...proto.Message) ([]byte, error) {
+// - Makes Header
+// - Writes all messages into buffer and returns bytes
+func MakeReadyToSendDeviceMessage(dev *device.Device, msg proto.Message) ([]byte, error) {
 	// Increase send sequence: In order to be able to filter duplicates
 	// remove device tracks last received sequence and ignores messages
 	// that has already been processed.
@@ -28,11 +28,11 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msgs ...proto.Message) ([]
 		DeviceId: dev.ID,
 	}
 	info := &openiot.MessageInfo{
-		Sequence: dev.SequenceSend,
+		Sequence:  dev.SequenceSend,
+		ProtoName: proto.MessageName(msg),
 	}
-	allMsgs := append([]proto.Message{info}, msgs...)
 
-	return MakeReadyToSendMessage(hdr, dev.EncryptionType, dev.Key(), allMsgs...)
+	return MakeReadyToSendMessage(hdr, dev.EncryptionType, dev.Key(), info, msg)
 }
 
 // MakeReadyToSendMessage makes message ready to be send

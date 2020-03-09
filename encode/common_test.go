@@ -20,9 +20,6 @@ func TestDeviceMessageNoEncryption(t *testing.T) {
 			Name:         "test1",
 			Manufacturer: "man1",
 		},
-		&openiot.JoinResponse{
-			Timestamp: 555,
-		},
 	)
 	require.NoError(t, err)
 	buf := bytes.NewBuffer(payload)
@@ -37,11 +34,10 @@ func TestDeviceMessageNoEncryption(t *testing.T) {
 	crc := crc32.ChecksumIEEE(buf.Bytes())
 	assert.Equal(t, crc, hdr.Crc)
 
-	// Read the rest: MessageInfo, JoinReq, JoinResp
+	// Read the rest: MessageInfo, JoinReq
 	msgInfo := &openiot.MessageInfo{}
 	joinReq := &openiot.JoinRequest{}
-	joinResp := &openiot.JoinResponse{}
-	err = DecryptAndRead(buf, dev.EncryptionType, dev.Key(), msgInfo, joinReq, joinResp)
+	err = DecryptAndRead(buf, dev.EncryptionType, dev.Key(), msgInfo, joinReq)
 	require.NoError(t, err)
 
 	// Message Info (send sequence is correct)
@@ -50,7 +46,6 @@ func TestDeviceMessageNoEncryption(t *testing.T) {
 	// Actual "device" messages
 	assert.Equal(t, "test1", joinReq.Name)
 	assert.Equal(t, "man1", joinReq.Manufacturer)
-	assert.Equal(t, int64(555), joinResp.Timestamp)
 }
 
 func TestDeviceMessageAesECB(t *testing.T) {
