@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 
 	"github.com/open-iot-devices/protobufs/go/openiot"
@@ -57,12 +58,18 @@ func processKeyExchangeRequest(
 	response := &openiot.KeyExchangeResponse{
 		DhB: public,
 	}
-	var sendBuf bytes.Buffer
-	if err := encode.WritePlain(&sendBuf, hdr, response); err != nil {
+	payload, err := encode.MakeReadyToSendMessage(hdr, openiot.EncryptionType_PLAIN, nil, response)
+	if err != nil {
 		return err
 	}
 
-	return transport.Send(sendBuf.Bytes())
+	glog.Infof("Device %x requested key exchange: %v, responded with %v",
+		hdr.DeviceId,
+		request.DhA,
+		response.DhB,
+	)
+
+	return transport.Send(payload)
 }
 
 func processJoinRequest(

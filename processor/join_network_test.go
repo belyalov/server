@@ -3,6 +3,7 @@ package processor
 import (
 	"bytes"
 	"fmt"
+	"hash/crc32"
 	"math/rand"
 	"testing"
 	"time"
@@ -181,6 +182,7 @@ func TestJoinWithEncryption(t *testing.T) {
 
 	// Perform key exchange since network join will be encrypted
 	key, err := performKeyExchangeRequest(999, openiot.EncryptionType_AES_ECB)
+	require.NoError(t, err)
 
 	// Perform Join Request
 	joinReq := &openiot.JoinRequest{
@@ -277,6 +279,10 @@ func performJoinRequest(
 	if err := encode.ReadSingleMessage(respBuf, hdrResp); err != nil {
 		return nil, fmt.Errorf("ReadSingleMessage failed: %v", err)
 	}
+	// Check CRC
+	if hdrResp.Crc != crc32.ChecksumIEEE(respBuf.Bytes()) {
+		return nil, fmt.Errorf("CRC check failed")
+	}
 	err = encode.DecryptAndRead(respBuf, enc, key, joinResp)
 
 	return joinResp, err
@@ -318,6 +324,10 @@ func performKeyExchangeRequest(id uint64, enc openiot.EncryptionType) ([]byte, e
 	respBuf := transport.LastMessage()
 	if err := encode.ReadSingleMessage(respBuf, hdrResp); err != nil {
 		return nil, fmt.Errorf("ReadSingleMessage failed: %v", err)
+	}
+	// Check CRC
+	if hdrResp.Crc != crc32.ChecksumIEEE(respBuf.Bytes()) {
+		return nil, fmt.Errorf("CRC check failed")
 	}
 	err = encode.DecryptAndRead(respBuf, openiot.EncryptionType_PLAIN, nil, keyResp)
 
