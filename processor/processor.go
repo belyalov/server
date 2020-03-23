@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"hash/crc32"
+	"reflect"
 
+	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/open-iot-devices/protobufs/go/openiot"
 	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/encode"
@@ -19,7 +22,7 @@ type Message struct {
 
 // ProcessMessage decodes / de-serializes raw packet and calls appropriate handler
 func ProcessMessage(message *Message) error {
-	// glog.Infof("Got packet from %s", message.Source.GetName())
+	glog.Infof("Got message from %s/%s", message.Source.GetTypeName(), message.Source.GetName())
 	buf := bytes.NewBuffer(message.Payload)
 
 	// First message (openiot.Header) is always unencrypted
@@ -47,50 +50,21 @@ func ProcessMessage(message *Message) error {
 		return fmt.Errorf("Device 0x%x is not registered", hdr.DeviceId)
 	}
 
-	// Send response, if provided by handler
-	// if response != nil {
-	// 	message.Source.Send(encode.MakeReadyToSendDeviceMessage())
-	// 	// message.Source.Send()
-	// }
+	// De-Serialize MessageInfo
+	info := &openiot.MessageInfo{}
+	msgType := proto.MessageType(dev.ProtobufName)
+	if msgType == nil {
+		return fmt.Errorf("0x%x: Protobuf '%s' is not registered", dev.ID, dev.ProtobufName)
+	}
 
-	// Create "placeholder" for all possible
-	// proto messages for this particular device
-	// msgs := make([]proto.Message, len(dev.Protobufs)+1)
-	// msgs[0] = &openiot.Message{}
-	// for index, name := range dev.Protobufs {
-	// 	msg, err := createProtoFromName(name)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	msgs[index+1] = msg
-	// }
-	// // Decrypt (if needed) then read all other messages
-	// switch x := hdr.Encryption.(type) {
-	// case *openiot.Header_Plain:
-	// 	if err := encode.ReadPlain(buffer, msgs...); err != nil {
-	// 		return err
-	// 	}
-	// case *openiot.Header_AesEcb:
-	// 	if err := encode.DecryptAndReadECB(buffer, dev.Key(), msgs...); err != nil {
-	// 		return err
-	// 	}
-	// default:
-	// 	return fmt.Errorf("Unsupported encryption type %T", x)
-	// }
-	// Decrypt (if needed) then read all other messages
-	// fmt.Println(dev.MessageNames)
-	// mt := proto.MessageType("openiot.SystemJoinRequest")
-	// // tp := &openiot.SystemJoinRequest{}
-	// // inst := reflect.New(tp).Elem().Interface()
-	// // inst := reflect.Zero(tp).Interface()
-	// inst := reflect.New(mt.Elem()).Interface().(proto.Message)
-	// // De-serialize all followed messages and run them through all device's handler
-	// // Ensure that all messages are known to the system
-	// for _, name := range msg.Names {
-	// 	if proto.MessageType(name) == nil {
-	// 		return fmt.Errorf("OpenIoT Message '%s' is not supported", name)
-	// 	}
-	// }
+	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
+	err := encode.DecryptAndRead(buf, dev.EncryptionType, dev.Key(), info, msg)
+	if err != nil {
+		return fmt.Errorf("0x%x: decrypt/deserialize failed: %v", dev.ID, err)
+	}
+
+	fmt.Println(info)
+	fmt.Println(msg)
 
 	return nil
 }
