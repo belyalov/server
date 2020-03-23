@@ -46,7 +46,7 @@ func (s *UDP) Start() error {
 	}
 	// Resolve LoRa gateway address, if any
 	if s.Remote != "" {
-		if addr, err := net.ResolveUDPAddr("udp", s.Remote); err != nil {
+		if addr, err := net.ResolveUDPAddr("udp", s.Remote); err == nil {
 			s.resolvedAddress = addr
 		} else {
 			return err
@@ -60,7 +60,7 @@ func (s *UDP) Start() error {
 		return err
 	}
 	s.socket = sock
-	glog.Infof("UDP server started at %s", sock)
+	glog.Infof("UDP server started at %s", s.Listen)
 
 	// Start UDP listener (with capability of buffer one packet)
 	s.receiveCh = make(chan []byte, 1)
