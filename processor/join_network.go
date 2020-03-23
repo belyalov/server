@@ -96,16 +96,27 @@ func processJoinRequest(
 	dev := device.FindDeviceByID(hdr.DeviceId)
 	if dev == nil {
 		dev = device.NewDevice(hdr.DeviceId)
+		dev.SetTransport(transport)
+		dev.Name = joinRequest.Name
+		dev.Manufacturer = joinRequest.Manufacturer
+		dev.ProductURL = joinRequest.ProductUrl
+		dev.ProtobufName = joinRequest.ProtobufName
+		dev.DisplayName = fmt.Sprintf("device_%x", dev.ID)
+		if joinRequest.DefaultHandler != "" {
+			dev.AddHandler(joinRequest.DefaultHandler)
+		}
+		device.AddDevice(dev)
+		glog.Infof("0x%x: Joined! name='%s' manufacturer='%s' url='%s' handler='%s', protobuf='%s'",
+			dev.ID,
+			dev.Name,
+			dev.Manufacturer,
+			dev.ProductURL,
+			joinRequest.DefaultHandler,
+			dev.ProtobufName,
+		)
+	} else {
+		glog.Infof("0x%x: Valid JoinRequest (dup?) from already registered device.", dev.ID)
 	}
-	if joinRequest.DefaultHandler != "" {
-		dev.AddHandler(joinRequest.DefaultHandler)
-	}
-	dev.SetTransport(transport)
-	dev.Name = joinRequest.Name
-	dev.Manufacturer = joinRequest.Manufacturer
-	dev.ProductURL = joinRequest.ProductUrl
-	dev.ProtobufURL = joinRequest.ProtobufUrl
-	device.AddDevice(dev) // Ignore "Device Already Exists" error
 
 	// Send response
 	joinResp := &openiot.JoinResponse{

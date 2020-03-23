@@ -121,7 +121,7 @@ func TestJoinNoEncryption(t *testing.T) {
 		Name:           "test1",
 		Manufacturer:   "man1",
 		ProductUrl:     "url1",
-		ProtobufUrl:    "proto1",
+		ProtobufName:   "proto1",
 		DefaultHandler: "someHandler",
 	}
 	joinResp, err := performJoinRequest(112233, openiot.EncryptionType_PLAIN, nil, joinReq)
@@ -135,7 +135,7 @@ func TestJoinNoEncryption(t *testing.T) {
 	assert.Equal(t, joinReq.Name, dev.Name)
 	assert.Equal(t, joinReq.Manufacturer, dev.Manufacturer)
 	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
-	assert.Equal(t, joinReq.ProtobufUrl, dev.ProtobufURL)
+	assert.Equal(t, joinReq.ProtobufName, dev.ProtobufName)
 	assert.Equal(t, []string{joinReq.DefaultHandler}, dev.HandlerNames)
 }
 
@@ -157,7 +157,7 @@ func TestJoinNoEncryptionDeviceExists(t *testing.T) {
 		Name:           "test555",
 		Manufacturer:   "man555",
 		ProductUrl:     "url555",
-		ProtobufUrl:    "proto555",
+		ProtobufName:   "proto555",
 		DefaultHandler: "new_one",
 	}
 	joinResp, err := performJoinRequest(555, dev.EncryptionType, dev.Key(), joinReq)
@@ -165,15 +165,15 @@ func TestJoinNoEncryptionDeviceExists(t *testing.T) {
 	// Validate JoinResponse
 	assert.Equal(t, *flagServerName, joinResp.Name)
 	assert.GreaterOrEqual(t, joinResp.Timestamp, time.Now().Unix())
-	// Ensure that device info has updated (no new device created)
+	// Ensure that device info is not updated (and no new device created)
 	dev = device.FindDeviceByID(555)
 	require.NotNil(t, dev)
-	assert.Equal(t, joinReq.Name, dev.Name)
-	assert.Equal(t, joinReq.Manufacturer, dev.Manufacturer)
-	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
-	assert.Equal(t, joinReq.ProtobufUrl, dev.ProtobufURL)
+	assert.Equal(t, "dummy", dev.Name)
+	assert.Equal(t, "", dev.Manufacturer)
+	assert.Equal(t, "", dev.ProductURL)
+	assert.Equal(t, "", dev.ProtobufName)
 	assert.Equal(t, uint32(10), dev.SequenceSend)
-	assert.Equal(t, []string{"existing_one", "new_one"}, dev.HandlerNames)
+	assert.Equal(t, []string{"existing_one"}, dev.HandlerNames)
 }
 
 func TestJoinWithEncryption(t *testing.T) {
@@ -189,7 +189,7 @@ func TestJoinWithEncryption(t *testing.T) {
 		Name:         "test99",
 		Manufacturer: "man99",
 		ProductUrl:   "url99",
-		ProtobufUrl:  "proto99",
+		ProtobufName: "proto99",
 	}
 	joinResp, err := performJoinRequest(999, openiot.EncryptionType_AES_ECB, key, joinReq)
 	require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestJoinWithEncryption(t *testing.T) {
 	assert.Equal(t, joinReq.Name, dev.Name)
 	assert.Equal(t, joinReq.Manufacturer, dev.Manufacturer)
 	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
-	assert.Equal(t, joinReq.ProtobufUrl, dev.ProtobufURL)
+	assert.Equal(t, joinReq.ProtobufName, dev.ProtobufName)
 
 	// One more try with invalid key
 	key[0] = 0
@@ -229,20 +229,20 @@ func TestJoinWithEncryptionDeviceExists(t *testing.T) {
 		Name:         "test555",
 		Manufacturer: "man555",
 		ProductUrl:   "url555",
-		ProtobufUrl:  "proto555",
+		ProtobufName: "proto555",
 	}
 	joinResp, err := performJoinRequest(321, dev.EncryptionType, dev.Key(), joinReq)
 	require.NoError(t, err)
 	// Validate JoinResponse
 	assert.Equal(t, *flagServerName, joinResp.Name)
 	assert.GreaterOrEqual(t, joinResp.Timestamp, time.Now().Unix())
-	// Ensure that device info has updated (no new device created)
+	// Ensure that device info is not updated (and no new device created)
 	dev = device.FindDeviceByID(321)
 	require.NotNil(t, dev)
-	assert.Equal(t, joinReq.Name, dev.Name)
-	assert.Equal(t, joinReq.Manufacturer, dev.Manufacturer)
-	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
-	assert.Equal(t, joinReq.ProtobufUrl, dev.ProtobufURL)
+	assert.Equal(t, "dummy", dev.Name)
+	assert.Equal(t, "", dev.Manufacturer)
+	assert.Equal(t, "", dev.ProductURL)
+	assert.Equal(t, "", dev.ProtobufName)
 	assert.Equal(t, uint32(20), dev.SequenceSend)
 }
 
