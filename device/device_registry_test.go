@@ -30,24 +30,26 @@ func TestDeviceRegistry(t *testing.T) {
 
 var testConfig = `- id: "0x112233"
   name: Unknown Device
+  display_name: device_112233
   manufacturer: Unknown
   product_url: www
-  protobuf_url: proto_www
   key: "010203040506070809"
   sequence_send: 10
   sequence_receive: 11
+  protobuf_name: proto_www
   handlers:
   - hmock
   transport: tmock
   encryptiontype: 0
 - id: "0x556677"
   name: Unknown Device
+  display_name: device_112233
   manufacturer: Unknown
   product_url: www2
-  protobuf_url: proto_www2
   key: 0b16212c37424d5863
   sequence_send: 20
   sequence_receive: 22
+  protobuf_name: proto_www2
   handlers: []
   transport: ""
   encryptiontype: 0

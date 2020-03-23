@@ -15,12 +15,13 @@ type Device struct {
 	ID              uint64 `yaml:"-"`
 	IDhex           string `yaml:"id"`
 	Name            string
+	DisplayName     string `yaml:"display_name"`
 	Manufacturer    string
 	ProductURL      string   `yaml:"product_url"`
-	ProtobufURL     string   `yaml:"protobuf_url"`
 	KeyString       string   `yaml:"key"`
 	SequenceSend    uint32   `yaml:"sequence_send"`
 	SequenceReceive uint32   `yaml:"sequence_receive"`
+	ProtobufName    string   `yaml:"protobuf_name"`
 	HandlerNames    []string `yaml:"handlers"`
 	TransportName   string   `yaml:"transport"`
 	EncryptionType  openiot.EncryptionType

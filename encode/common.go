@@ -28,8 +28,7 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msg proto.Message) ([]byte
 		DeviceId: dev.ID,
 	}
 	info := &openiot.MessageInfo{
-		Sequence:  dev.SequenceSend,
-		ProtoName: proto.MessageName(msg),
+		Sequence: dev.SequenceSend,
 	}
 
 	return MakeReadyToSendMessage(hdr, dev.EncryptionType, dev.Key(), info, msg)
