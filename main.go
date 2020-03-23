@@ -4,10 +4,16 @@ import (
 	"flag"
 	"math/rand"
 	"os"
+	"os/signal"
 	"path"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/golang/glog"
+
+	"github.com/open-iot-devices/server/device"
+	"github.com/open-iot-devices/server/processor"
 	"github.com/open-iot-devices/server/transport"
 )
 
@@ -27,95 +33,107 @@ func main() {
 	// Load transports
 	if fd, err := os.Open(transportsFilename); err == nil {
 		if err := transport.LoadTransports(fd); err != nil {
-			glog.Errorf("Unable to LoadTransports: %v", err)
+			glog.Fatalf("Unable to LoadTransports: %v", err)
 		}
 	} else {
 		glog.Errorf("Unable to open: %v", err)
 	}
 
-	_ = devicesFilename
+	// Load Devices
+	if fd, err := os.Open(devicesFilename); err == nil {
+		if err := device.LoadDevices(fd); err != nil {
+			glog.Fatalf("Unable to LoadDevices: %v", err)
+		}
+	} else {
+		glog.Errorf("Unable to open: %v", err)
+	}
 
-	// // Create transports from configuration
-	// glog.Infof("Loading transports:")
-	// for name, config := range transports.UDP {
-	// 	glog.Infof("\t%s", name)
-	// 	instance, err := udp.NewUDP(name, config)
-	// 	if err != nil {
-	// 		glog.Errorf("Unable to create UDP transport '%s': %v", name, err)
-	// 		continue
-	// 	}
-	// 	transport.MustAddTransport(instance)
-	// }
+	// To be able to shutdown server gracefully...
+	var wg sync.WaitGroup
+	doneCh := make(chan interface{})
+	incomingMessagesCh := make(chan *processor.Message, *flagMsgBuffer)
 
-	// glog.Infof("Loading devices from %s...", devicesDirname)
-	// config.LoadDevicesFromDirectory(devicesDirname)
+	glog.Infof("Starting transports...")
+	for _, tr := range transport.GetAllTransports() {
+		glog.Infof("\t%s/%s", tr.GetTypeName(), tr.GetName())
+		if err := tr.Start(); err != nil {
+			glog.Fatalf("Unable to start transport %s/%s: %v",
+				tr.GetTypeName(), tr.GetName(), err)
+		}
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, instance transport.Transport) {
+			for {
+				select {
+				case packet := <-instance.Receive():
+					// Forward packet
+					incomingMessagesCh <- &processor.Message{
+						Source:  instance,
+						Payload: packet,
+					}
+				case <-doneCh:
+					instance.Stop()
+					wg.Done()
+					glog.Infof("\t%s/%s terminated.", instance.GetTypeName(), instance.GetName())
+					return
+				}
+			}
+		}(&wg, tr)
+	}
 
-	// glog.Infof("All configuration has been successfully loaded.")
+	// Print all devices / handlers
+	glog.Info("Registered device handlers:")
+	for _, handler := range device.GetAllHandlers() {
+		glog.Infof("\t%s", handler.GetName())
+	}
 
-	// // To be able to shutdown server gracefully...
-	// var wg sync.WaitGroup
-	// doneCh := make(chan interface{})
+	glog.Info("Registered devices:")
+	for _, dev := range device.GetAllDevices() {
+		glog.Infof("\t%s (0x%x), handlers: %v", dev.Name, dev.ID, dev.HandlerNames)
+	}
 
-	// // Start all transports
-	// incomingMessagesCh := make(chan *processor.Message, *flagMsgBuffer)
-	// glog.Infof("Starting transports...")
-	// for name, instance := range transport.GetAllTransports() {
-	// 	if err := instance.Start(); err != nil {
-	// 		glog.Fatalf("Unable to start transport '%s': %v", name, err)
-	// 	}
-	// 	wg.Add(1)
-	// 	go func(wg *sync.WaitGroup, name string, instance transport.Transport) {
-	// 		for {
-	// 			select {
-	// 			case packet := <-instance.Receive():
-	// 				// Forward packet
-	// 				incomingMessagesCh <- &processor.Message{
-	// 					Source:  instance,
-	// 					Payload: packet,
-	// 				}
-	// 			case <-doneCh:
-	// 				instance.Stop()
-	// 				glog.Infof("Transport %s terminated", name)
-	// 				wg.Done()
-	// 				return
-	// 			}
-	// 		}
-	// 	}(&wg, name, instance)
-	// }
+	// Setup SIGTERM / SIGINT
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 
-	// // Setup SIGTERM / SIGINT
-	// signalCh := make(chan os.Signal, 1)
-	// signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	glog.Info("OpenIoT server ready.")
 
-	// glog.Info("OpenIoT server ready.")
+	// Save all configuration on exit
+	defer saveDevicesToFile(devicesFilename)
+	defer glog.Flush()
 
-	// // Save all configuration on exit
-	// defer func() {
-	// 	if err := config.SaveDevicesToFile(devicesDirname); err != nil {
-	// 		glog.Errorf("Failed to save devices config: %v", err)
-	// 	}
+	// Main loop, handle:
+	// - all incoming packets from transports
+	// - ctrl+c
+	ticker := time.NewTicker(5 * time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			saveDevicesToFile(devicesFilename)
 
-	// 	defer glog.Flush()
-	// }()
+		case message := <-incomingMessagesCh:
+			if err := processor.ProcessMessage(message); err != nil {
+				glog.Infof("ProcessPacket failed: %v", err)
+			}
 
-	// // Main loop, handle:
-	// // - all incoming packets from transports
-	// // - ctrl+c
-	// for {
-	// 	select {
-	// 	case message := <-incomingMessagesCh:
-	// 		if err := processor.ProcessMessage(message); err != nil {
-	// 			glog.Infof("ProcessPacket failed: %v", err)
-	// 		}
-	// 	case sig := <-signalCh:
-	// 		glog.Infof("Got SIG %v, terminating...", sig)
-	// 		// Gracefully shutdown everything
-	// 		close(doneCh)
-	// 		wg.Wait()
-	// 		glog.Info("Gracefully terminated.")
-	// 		return
-	// 	}
-	// }
+		case sig := <-signalCh:
+			glog.Infof("Got SIG %v, terminating...", sig)
+			// Gracefully shutdown everything
+			close(doneCh)
+			wg.Wait()
+			glog.Info("Gracefully terminated.")
+			return
+		}
+	}
+}
+
+func saveDevicesToFile(filename string) {
+	if fd, err := os.Create(filename); err == nil {
+		if err := device.SaveDevices(fd); err != nil {
+			glog.Errorf("Unable to SaveDevices: %v", err)
+		}
+	} else {
+		glog.Errorf("Unable to create: %v", err)
+	}
 }
 
 // // Start InfluxDB

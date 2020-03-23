@@ -9,4 +9,5 @@ import (
 
 	// Protobufs
 	_ "github.com/open-iot-devices/protobufs/go/openiot"
+	_ "github.com/open-iot-devices/protobufs/go/openiot/sensor"
 )
