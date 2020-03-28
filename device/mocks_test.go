@@ -16,7 +16,7 @@ func (m *mockHandler) GetName() string {
 	return m.name
 }
 
-func (*mockHandler) ProcessMessage(msg proto.Message) error {
+func (*mockHandler) ProcessMessage(device *Device, msg proto.Message) error {
 	return nil
 }
 
