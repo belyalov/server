@@ -20,8 +20,8 @@ func (h *deviceHandler) GetName() string {
 
 func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message) error {
 	// Extract and log all proto field name/value pairs
-	for name, value := range extractNameValuesFromMessage(msg) {
-		glog.Infof("[%s] %v: %v", handlerName, name, value)
+	for _, value := range extractNameValuesFromMessage(msg) {
+		glog.Infof("%v", value)
 	}
 	return nil
 }

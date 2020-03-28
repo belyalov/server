@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+
 	"github.com/open-iot-devices/protobufs/go/openiot"
 	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/encode"
@@ -22,7 +23,6 @@ type Message struct {
 
 // ProcessMessage decodes / de-serializes raw packet and calls appropriate handler
 func ProcessMessage(message *Message) error {
-	glog.Infof("Got message from %s/%s", message.Source.GetTypeName(), message.Source.GetName())
 	buf := bytes.NewBuffer(message.Payload)
 
 	// First message (openiot.Header) is always unencrypted
@@ -57,14 +57,22 @@ func ProcessMessage(message *Message) error {
 		return fmt.Errorf("0x%x: Protobuf '%s' is not registered", dev.ID, dev.ProtobufName)
 	}
 
+	// De-Serialize device message
 	msg := reflect.New(msgType.Elem()).Interface().(proto.Message)
 	err := encode.DecryptAndRead(buf, dev.EncryptionType, dev.Key(), info, msg)
 	if err != nil {
 		return fmt.Errorf("0x%x: decrypt/deserialize failed: %v", dev.ID, err)
 	}
 
-	fmt.Println(info)
-	fmt.Println(msg)
+	// Run all associated handlers
+	glog.Infof("Message from %s/%s/%s",
+		message.Source.GetTypeName(),
+		message.Source.GetName(),
+		dev.DisplayName,
+	)
+	for _, handler := range dev.Handlers() {
+		handler.ProcessMessage(dev, msg)
+	}
 
 	return nil
 }
