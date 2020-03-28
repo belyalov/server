@@ -16,6 +16,14 @@ func (m *mockHandler) GetName() string {
 	return m.name
 }
 
+func (m *mockHandler) Start() error {
+	return nil
+}
+
+func (m *mockHandler) Stop() {
+
+}
+
 func (*mockHandler) ProcessMessage(device *Device, msg proto.Message) error {
 	return nil
 }

@@ -18,6 +18,17 @@ func (h *deviceHandler) GetName() string {
 	return handlerName
 }
 
+func (h *deviceHandler) Start() error {
+	return nil
+}
+
+func (h *deviceHandler) Stop() {
+}
+
+func (h *deviceHandler) AddDevice(device *device.Device) {
+
+}
+
 func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message) error {
 	// Extract and log all proto field name/value pairs
 	for _, value := range extractNameValuesFromMessage(msg) {
@@ -25,8 +36,6 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 	}
 	return nil
 }
-
-func (h *deviceHandler) AddDevice(device *device.Device) {}
 
 func extractNameValuesFromMessage(msg proto.Message) []string {
 	results := []string{}
