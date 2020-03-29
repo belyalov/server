@@ -30,6 +30,10 @@ func main() {
 	devicesFilename := path.Join(*flagConfigDir, "devices.yaml")
 	os.MkdirAll(*flagConfigDir, os.ModePerm)
 
+	// To be able to shutdown server gracefully...
+	var wg sync.WaitGroup
+	doneCh := make(chan interface{})
+
 	// Load transports
 	if fd, err := os.Open(transportsFilename); err == nil {
 		if err := transport.LoadTransports(fd); err != nil {
@@ -37,6 +41,23 @@ func main() {
 		}
 	} else {
 		glog.Errorf("Unable to open: %v", err)
+	}
+
+	// Start device handlers
+	glog.Info("Starting device handlers...")
+	for name, handler := range device.GetAllHandlers() {
+		glog.Infof("\t%s", name)
+		if err := handler.Start(); err != nil {
+			glog.Fatalf("Unable to start device handler '%s': %v",
+				handler.GetName(), err)
+		}
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, handler device.Handler) {
+			<-doneCh
+			handler.Stop()
+			wg.Done()
+			glog.Infof("\thandler %s terminated.", handler.GetName())
+		}(&wg, handler)
 	}
 
 	// Load Devices
@@ -47,13 +68,14 @@ func main() {
 	} else {
 		glog.Errorf("Unable to open: %v", err)
 	}
-
-	// To be able to shutdown server gracefully...
-	var wg sync.WaitGroup
-	doneCh := make(chan interface{})
-	incomingMessagesCh := make(chan *processor.Message, *flagMsgBuffer)
+	// Print all devices
+	glog.Info("Registered devices:")
+	for _, dev := range device.GetAllDevices() {
+		glog.Infof("\t%s (0x%x), handlers: %v", dev.Name, dev.ID, dev.HandlerNames)
+	}
 
 	glog.Infof("Starting transports...")
+	incomingMessagesCh := make(chan *processor.Message, *flagMsgBuffer)
 	for _, tr := range transport.GetAllTransports() {
 		glog.Infof("\t%s/%s", tr.GetTypeName(), tr.GetName())
 		if err := tr.Start(); err != nil {
@@ -78,17 +100,6 @@ func main() {
 				}
 			}
 		}(&wg, tr)
-	}
-
-	// Print all devices / handlers
-	glog.Info("Registered device handlers:")
-	for _, handler := range device.GetAllHandlers() {
-		glog.Infof("\t%s", handler.GetName())
-	}
-
-	glog.Info("Registered devices:")
-	for _, dev := range device.GetAllDevices() {
-		glog.Infof("\t%s (0x%x), handlers: %v", dev.Name, dev.ID, dev.HandlerNames)
 	}
 
 	// Setup SIGTERM / SIGINT
@@ -120,7 +131,6 @@ func main() {
 			// Gracefully shutdown everything
 			close(doneCh)
 			wg.Wait()
-			glog.Info("Gracefully terminated.")
 			return
 		}
 	}
@@ -135,33 +145,3 @@ func saveDevicesToFile(filename string) {
 		glog.Errorf("Unable to create: %v", err)
 	}
 }
-
-// // Start InfluxDB
-// caps.InfluxDb, err = influxdb.NewInfluxDB(cfg.InfluxDb)
-// if err != nil {
-// 	glog.Fatalf("InfluxDB failed: %v", err)
-// }
-
-// // Start MQTT client
-// caps.Mqtt, err = mqtt.NewMqttClient(cfg.Mqtt)
-// wg.Add(1)
-// go func(wg *sync.WaitGroup) {
-// 	err := caps.Mqtt.Run(ctx)
-// 	if err != nil {
-// 		glog.Fatalf("MQTT failed: %v", err)
-// 	}
-// 	wg.Done()
-// }(&wg)
-
-// Load / register devices
-// time.Sleep(100 * time.Millisecond) // Find better solution?
-// err = devices.LoadFromFile(*flagDevices, caps)
-// if err != nil {
-// 	glog.Fatalf("Unable to load devices: %v", err)
-// }
-
-// // Start all devices
-// err = devices.StartAllDevices(ctx)
-// if err != nil {
-// 	glog.Fatalf("Unable to start devices: %v", err)
-// }

@@ -3,6 +3,7 @@ package logger
 import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+
 	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/utils"
 )
