@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"path"
 	"sync"
 	"syscall"
 	"time"
@@ -17,7 +16,8 @@ import (
 	"github.com/open-iot-devices/server/transport"
 )
 
-var flagConfigDir = flag.String("config", ".config", "Configuration directory")
+var flagTransportsFilename = flag.String("config.transports", ".config/transports.yaml", "Transports config filename")
+var flagDevicesFilename = flag.String("config.devices", ".config/devices.yaml", "Devices config filename")
 var flagMsgBuffer = flag.Uint("buffer", 32, "Receive message buffer size, in messages")
 
 func main() {
@@ -25,17 +25,12 @@ func main() {
 	flag.Set("logtostderr", "true")
 	flag.Parse()
 
-	// Setup config names and create directory
-	transportsFilename := path.Join(*flagConfigDir, "transports.yaml")
-	devicesFilename := path.Join(*flagConfigDir, "devices.yaml")
-	os.MkdirAll(*flagConfigDir, os.ModePerm)
-
 	// To be able to shutdown server gracefully...
 	var wg sync.WaitGroup
 	doneCh := make(chan interface{})
 
 	// Load transports
-	if fd, err := os.Open(transportsFilename); err == nil {
+	if fd, err := os.Open(*flagTransportsFilename); err == nil {
 		if err := transport.LoadTransports(fd); err != nil {
 			glog.Fatalf("Unable to LoadTransports: %v", err)
 		}
@@ -61,7 +56,7 @@ func main() {
 	}
 
 	// Load Devices
-	if fd, err := os.Open(devicesFilename); err == nil {
+	if fd, err := os.Open(*flagDevicesFilename); err == nil {
 		if err := device.LoadDevices(fd); err != nil {
 			glog.Fatalf("Unable to LoadDevices: %v", err)
 		}
@@ -109,7 +104,7 @@ func main() {
 	glog.Info("OpenIoT server ready.")
 
 	// Save all configuration on exit
-	defer saveDevicesToFile(devicesFilename)
+	defer saveDevicesToFile(*flagDevicesFilename)
 	defer glog.Flush()
 
 	// Main loop, handle:
@@ -119,7 +114,7 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			saveDevicesToFile(devicesFilename)
+			saveDevicesToFile(*flagDevicesFilename)
 
 		case message := <-incomingMessagesCh:
 			if err := processor.ProcessMessage(message); err != nil {
