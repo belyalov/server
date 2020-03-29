@@ -41,7 +41,7 @@ func main() {
 	// Start device handlers
 	glog.Info("Starting device handlers...")
 	for name, handler := range device.GetAllHandlers() {
-		glog.Infof("\t%s", name)
+		glog.Infof("-> %s", name)
 		if err := handler.Start(); err != nil {
 			glog.Fatalf("Unable to start device handler '%s': %v",
 				handler.GetName(), err)
@@ -51,7 +51,7 @@ func main() {
 			<-doneCh
 			handler.Stop()
 			wg.Done()
-			glog.Infof("\thandler %s terminated.", handler.GetName())
+			glog.Infof("handler %s terminated.", handler.GetName())
 		}(&wg, handler)
 	}
 
@@ -66,13 +66,13 @@ func main() {
 	// Print all devices
 	glog.Info("Registered devices:")
 	for _, dev := range device.GetAllDevices() {
-		glog.Infof("\t%s (0x%x), handlers: %v", dev.Name, dev.ID, dev.HandlerNames)
+		glog.Infof("-> %s (0x%x), handlers: %v", dev.Name, dev.ID, dev.HandlerNames)
 	}
 
 	glog.Infof("Starting transports...")
 	incomingMessagesCh := make(chan *processor.Message, *flagMsgBuffer)
 	for _, tr := range transport.GetAllTransports() {
-		glog.Infof("\t%s/%s", tr.GetTypeName(), tr.GetName())
+		glog.Infof("-> %s/%s", tr.GetTypeName(), tr.GetName())
 		if err := tr.Start(); err != nil {
 			glog.Fatalf("Unable to start transport %s/%s: %v",
 				tr.GetTypeName(), tr.GetName(), err)
@@ -90,7 +90,7 @@ func main() {
 				case <-doneCh:
 					instance.Stop()
 					wg.Done()
-					glog.Infof("\t%s/%s terminated.", instance.GetTypeName(), instance.GetName())
+					glog.Infof("%s/%s terminated.", instance.GetTypeName(), instance.GetName())
 					return
 				}
 			}
