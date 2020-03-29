@@ -5,6 +5,7 @@ import (
 	_ "github.com/open-iot-devices/server/transport/udp"
 
 	// Device handlers
+	_ "github.com/open-iot-devices/server/handlers/influxdb"
 	_ "github.com/open-iot-devices/server/handlers/logger"
 
 	// Protobufs
