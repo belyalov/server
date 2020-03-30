@@ -66,7 +66,7 @@ func main() {
 	// Print all devices
 	glog.Info("Registered devices:")
 	for _, dev := range device.GetAllDevices() {
-		glog.Infof("-> %s (0x%x), handlers: %v", dev.Name, dev.ID, dev.HandlerNames)
+		glog.Infof("-> %s (%s, 0x%x), handlers: %v", dev.DisplayName, dev.Name, dev.ID, dev.HandlerNames)
 	}
 
 	glog.Infof("Starting transports...")
