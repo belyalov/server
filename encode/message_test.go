@@ -44,7 +44,8 @@ func TestWriteSingleMessage(t *testing.T) {
 	serialized, err := proto.Marshal(msg)
 	require.NoError(t, err)
 
-	expected.WriteByte(byte(len(serialized)))
+	err = writeMessageLen(&expected, len(serialized))
+	assert.NoError(t, err)
 	expected.Write(serialized)
 
 	require.Equal(t, expected.Bytes(), result.Bytes())
@@ -60,7 +61,8 @@ func TestReadSingleMessage(t *testing.T) {
 	// Serialize it manually
 	serialized, err := proto.Marshal(original)
 	require.NoError(t, err)
-	buffer.WriteByte(byte(len(serialized)))
+	err = writeMessageLen(&buffer, len(serialized))
+	assert.NoError(t, err)
 	buffer.Write(serialized)
 
 	// Validate
@@ -71,7 +73,6 @@ func TestReadSingleMessage(t *testing.T) {
 }
 
 func TestReadSingleMessageNegative(t *testing.T) {
-
 	// Empty buffer
 	buffer := &bytes.Buffer{}
 	err := ReadSingleMessage(buffer, nil)
@@ -86,6 +87,11 @@ func TestReadSingleMessageNegative(t *testing.T) {
 	buffer = bytes.NewBuffer([]byte{0x10, 0})
 	err = ReadSingleMessage(buffer, nil)
 	assert.EqualError(t, err, "Invalid message length: 16, max 1")
+
+	// Invalid message len (too big, 64bit)
+	buffer = bytes.NewBuffer([]byte{177, 237, 128, 130, 62, 177, 249})
+	err = ReadSingleMessage(buffer, nil)
+	assert.EqualError(t, err, "Invalid message length: 16647206577, max 2")
 }
 
 func TestAddPadding(t *testing.T) {

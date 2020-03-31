@@ -14,18 +14,18 @@ import (
 // from buffer previously encoded using "delimited" approach,
 // i.e. message length followed by message payload
 func ReadSingleMessage(buffer *bytes.Buffer, msg proto.Message) error {
-	messageLen, err := readMessageLen(buffer)
+	msgLen, err := binary.ReadUvarint(buffer)
 	if err != nil {
 		return err
 	}
 
 	// Check boundaries
-	if messageLen > buffer.Len() {
-		return fmt.Errorf("Invalid message length: %d, max %d", messageLen, buffer.Len())
+	if msgLen > uint64(buffer.Len()) {
+		return fmt.Errorf("Invalid message length: %d, max %d", msgLen, buffer.Len())
 	}
 
 	// De-serialize
-	return proto.Unmarshal(buffer.Next(messageLen), msg)
+	return proto.Unmarshal(buffer.Next(int(msgLen)), msg)
 }
 
 // WriteSingleMessage serializes single protobuf
@@ -54,12 +54,6 @@ func writeMessageLen(buffer *bytes.Buffer, messageLen int) error {
 	_, err := buffer.Write(tmpBuf[:written])
 
 	return err
-}
-
-func readMessageLen(buffer *bytes.Buffer) (int, error) {
-	msgLen, err := binary.ReadUvarint(buffer)
-
-	return int(msgLen), err
 }
 
 // addPadding checks / adds random bytes padding
