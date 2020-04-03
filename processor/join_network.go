@@ -63,10 +63,12 @@ func processKeyExchangeRequest(
 		return err
 	}
 
-	glog.Infof("Device %x requested key exchange: %v, responded with %v",
+	glog.Infof("Device %x requested key exchange for encryption %v: dhA=%v, dhB=%v, AES key=%v",
 		hdr.DeviceId,
+		request.EncryptionType,
 		request.DhA,
 		response.DhB,
+		entry.key,
 	)
 
 	return transport.Send(payload)
@@ -102,6 +104,8 @@ func processJoinRequest(
 		dev.ProductURL = joinRequest.ProductUrl
 		dev.ProtobufName = joinRequest.ProtobufName
 		dev.DisplayName = fmt.Sprintf("device_%x", dev.ID)
+		dev.EncryptionType = encParams.encryptionType
+		dev.SetKey(encParams.key)
 		if joinRequest.DefaultHandler != "" {
 			dev.AddHandler(joinRequest.DefaultHandler)
 		}

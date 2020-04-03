@@ -203,6 +203,8 @@ func TestJoinWithEncryption(t *testing.T) {
 	assert.Equal(t, joinReq.Manufacturer, dev.Manufacturer)
 	assert.Equal(t, joinReq.ProductUrl, dev.ProductURL)
 	assert.Equal(t, joinReq.ProtobufName, dev.ProtobufName)
+	assert.Equal(t, openiot.EncryptionType_AES_ECB, dev.EncryptionType)
+	assert.Equal(t, key, dev.Key())
 
 	// One more try with invalid key
 	key[0] = 0
