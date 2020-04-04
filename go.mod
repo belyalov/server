@@ -3,6 +3,7 @@ module github.com/open-iot-devices/server
 go 1.13
 
 require (
+	github.com/belyalov/love_heart v0.0.0-20200401034153-35382cae2e16
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e

@@ -1,3 +1,5 @@
+github.com/belyalov/love_heart v0.0.0-20200401034153-35382cae2e16 h1:kXn/yUH8XB2G1n8Ah9XAYdvMjYK5shvpxFLvUUdoNCU=
+github.com/belyalov/love_heart v0.0.0-20200401034153-35382cae2e16/go.mod h1:CHRuETMGgZ/Cql0KEng4bByg+wPoxlVOdq+NFVBV/sE=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
