@@ -3,6 +3,7 @@ package love_heart
 import (
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/open-iot-devices/server/device"
@@ -37,6 +38,7 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 	if hour >= 10 && hour < 20 {
 		ctrl.EnableAnimation = true
 	}
+	glog.Infof("Animation is %v", ctrl.EnableAnimation)
 
 	// Send it
 	payload, err := encode.MakeReadyToSendDeviceMessage(device, ctrl)
