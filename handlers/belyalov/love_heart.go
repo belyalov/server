@@ -1,4 +1,4 @@
-package love_heart
+package belyalov
 
 import (
 	"time"
@@ -9,10 +9,10 @@ import (
 	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/encode"
 
-	love_pb "github.com/belyalov/love_heart/Proto/go"
+	pb "github.com/belyalov/protobufs/go"
 )
 
-const handlerName = "love_heart"
+const handlerName = "belyalov"
 
 type deviceHandler struct{}
 
@@ -32,13 +32,15 @@ func (h *deviceHandler) AddDevice(device *device.Device) {
 }
 
 func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message) error {
-	// Prepare LoveHeart control message
-	ctrl := &love_pb.Control{}
+	// Prepare control message
+	ctrl := &pb.Control{
+		LoveHeart: &pb.LoveHeartControl{},
+	}
 	hour, _, _ := time.Now().Clock()
 	if hour >= 10 && hour < 20 {
-		ctrl.EnableAnimation = true
+		ctrl.LoveHeart.EnableAnimation = true
 	}
-	glog.Infof("Animation is %v", ctrl.EnableAnimation)
+	glog.Infof("Animation is %v", ctrl.LoveHeart.EnableAnimation)
 
 	// Send it
 	payload, err := encode.MakeReadyToSendDeviceMessage(device, ctrl)

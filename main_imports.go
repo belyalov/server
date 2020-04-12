@@ -2,7 +2,7 @@ package main
 
 import (
 	// Custom
-	_ "github.com/open-iot-devices/server/handlers/loveheart"
+	_ "github.com/open-iot-devices/server/handlers/belyalov"
 
 	// Transports
 	_ "github.com/open-iot-devices/server/transport/udp"
