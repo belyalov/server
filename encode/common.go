@@ -3,6 +3,7 @@ package encode
 import (
 	"bytes"
 	"hash/crc32"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -27,8 +28,13 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msg proto.Message) ([]byte
 	hdr := &openiot.Header{
 		DeviceId: dev.ID,
 	}
+
+	now := time.Now()
+
 	info := &openiot.MessageInfo{
 		Sequence: dev.SequenceSend,
+		Date:     encodeDate(&now),
+		Time:     encodeTime(&now),
 	}
 
 	return MakeReadyToSendMessage(hdr, dev.EncryptionType, dev.Key(), info, msg)
@@ -60,4 +66,37 @@ func MakeReadyToSendMessage(
 	}
 
 	return buf.Bytes(), nil
+}
+
+func encodeDate(date *time.Time) uint32 {
+	// YY-MM-DD-WD
+	var res uint32
+	weekday := date.Weekday()
+	if weekday == time.Sunday {
+		res = 0x07
+	} else {
+		res = uint32(weekday)
+	}
+	year, month, day := date.Date()
+	res |= intToBcd(day) << 8
+	res |= intToBcd(int(month)) << 16
+	res |= intToBcd(year-2000) << 24
+
+	return res
+}
+
+func encodeTime(date *time.Time) uint32 {
+	// HH:MM:SS
+	var res uint32 = intToBcd(date.Second())
+	res |= intToBcd(date.Minute()) << 8
+	res |= intToBcd(date.Hour()) << 16
+
+	return res
+}
+
+func intToBcd(val int) uint32 {
+	if val > 99 {
+		return 0
+	}
+	return uint32((val / 10 << 4) | (val % 10))
 }
