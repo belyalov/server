@@ -3,7 +3,6 @@ package belyalov
 import (
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 
 	"github.com/open-iot-devices/server/device"
@@ -42,7 +41,6 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 		ctrl.LoveHeart.EnableAnimation = true
 		ctrl.Tulip.EnableAnimation = true
 	}
-	glog.Infof("Animation is %v", ctrl.LoveHeart.EnableAnimation)
 
 	// Send it
 	payload, err := encode.MakeReadyToSendDeviceMessage(device, ctrl)
