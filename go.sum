@@ -2,6 +2,8 @@ github.com/belyalov/love_heart v0.0.0-20200401034153-35382cae2e16 h1:kXn/yUH8XB2
 github.com/belyalov/love_heart v0.0.0-20200401034153-35382cae2e16/go.mod h1:CHRuETMGgZ/Cql0KEng4bByg+wPoxlVOdq+NFVBV/sE=
 github.com/belyalov/protobufs v0.0.0-20200412001043-6daaf998c04c h1:mJmCLFNpOUBeJbk/L+9hMoRvmzcOAu+PUVAv4r1+wvY=
 github.com/belyalov/protobufs v0.0.0-20200412001043-6daaf998c04c/go.mod h1:5z56qu8b9+bQe21fUnRN6/+gMy+5cIe42cRjxOIgqkE=
+github.com/belyalov/protobufs v0.0.0-20200418044139-363413f58672 h1:q503RNw8QB9FfyOavKoiRWq6ny+1EP6+2+PxkvGL8Ac=
+github.com/belyalov/protobufs v0.0.0-20200418044139-363413f58672/go.mod h1:5z56qu8b9+bQe21fUnRN6/+gMy+5cIe42cRjxOIgqkE=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

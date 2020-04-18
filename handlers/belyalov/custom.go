@@ -35,10 +35,12 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 	// Prepare control message
 	ctrl := &pb.Control{
 		LoveHeart: &pb.LoveHeartControl{},
+		Tulip:     &pb.TulipControl{},
 	}
 	hour, _, _ := time.Now().Clock()
 	if hour >= 10 && hour < 20 {
 		ctrl.LoveHeart.EnableAnimation = true
+		ctrl.Tulip.EnableAnimation = true
 	}
 	glog.Infof("Animation is %v", ctrl.LoveHeart.EnableAnimation)
 
