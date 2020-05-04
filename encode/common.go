@@ -40,12 +40,11 @@ func MakeReadyToSendDeviceMessage(dev *device.Device, msg proto.Message) ([]byte
 	return MakeReadyToSendMessage(hdr, dev.EncryptionType, dev.Key(), info, msg)
 }
 
-// MakeReadyToSendMessage makes message ready to be send
-// It does:
-// - Serializes all msgs
-// - Calculates CRC
-// - Optionally encrypts messages
-// - Writes all messages into buffer
+// MakeReadyToSendMessage makes message ready to be send, it does:
+// - Serialize all msgs
+// - Calculate CRC
+// - Optionally encrypt messages
+// - Write all messages into buffer
 func MakeReadyToSendMessage(
 	hdr *openiot.Header, enc openiot.EncryptionType, key []byte, msgs ...proto.Message) ([]byte, error) {
 	// Serialize (with optional encryption) all messages:

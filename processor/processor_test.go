@@ -1,47 +1,96 @@
 package processor
 
-// func TestDeviceJoin(t *testing.T) {
-// 	device.DeleteAllDevices()
-// 	pendingDevices = map[uint64][]byte{}
+import (
+	"bytes"
+	"hash/crc32"
+	"testing"
 
-// 	// Generate "device" DH request
-// 	privateA, publicA := generateDiffieHellman(dhG, dhP)
+	"github.com/open-iot-devices/protobufs/go/openiot"
+	"github.com/open-iot-devices/server/device"
+	"github.com/open-iot-devices/server/encode"
+	"github.com/stretchr/testify/assert"
+)
 
-// 	// Craft Join Request message
-// 	hdr := &openiot.Header{
-// 		DeviceId: 1,
-// 		Encryption: &openiot.Header_Plain{
-// 			Plain: true,
-// 		},
-// 	}
-// 	jreq := &openiot.SystemJoinRequest{
-// 		DhG: dhG,
-// 		DhP: dhP,
-// 		DhA: publicA,
-// 	}
-// 	var reqBuf bytes.Buffer
-// 	encode.WritePlain(&reqBuf, hdr, jreq)
+func TestMalformedMessage(t *testing.T) {
+	var buf bytes.Buffer
+	buf.WriteString("some_totally_malformed_message_not_protobuf")
 
-// 	// "Send" it with mock source transport
-// 	mockTr := &mockTransport{}
-// 	err := ProcessMessage(&Message{
-// 		Payload: reqBuf.Bytes(),
-// 		Source:  mockTr,
-// 	})
-// 	assert.NoError(t, err)
+	err := ProcessMessage(&Message{Payload: buf.Bytes()})
+	assert.EqualError(t, err, "Invalid message length: 115, max 42")
+}
 
-// 	// Ensure that device has been added into temporary map / response sent
-// 	assert.Equal(t, 1, len(pendingDevices))
-// 	require.Equal(t, 1, len(mockTr.history))
+func TestInvalidCRC(t *testing.T) {
+	// Generate valid header + junk payload so CRC will fail
+	hdr := &openiot.Header{
+		DeviceId: 111,
+		Crc:      111,
+	}
 
-// 	// De-serialize response
-// 	respBuf := bytes.NewBuffer(mockTr.history[0])
-// 	jresp := &openiot.SystemJoinResponse{}
-// 	err = encode.ReadPlain(respBuf, hdr, jresp)
-// 	require.NoError(t, err)
-// 	// Calculate diffie-hellman key for "device"
-// 	key := calculateDiffieHellmanKey(jreq.DhP, jresp.DhB, privateA)
-// 	fmt.Println("clie key", key)
+	var buf bytes.Buffer
+	encode.WriteSingleMessage(&buf, hdr)
+	buf.WriteString("somejunkpayload")
 
-// 	t.Fail()
-// }
+	err := ProcessMessage(&Message{Payload: buf.Bytes()})
+	assert.EqualError(t, err, "CRC check failed")
+}
+
+func TestUnknownDevice(t *testing.T) {
+	hdr := &openiot.Header{
+		DeviceId: 0xffff,
+	}
+	msg := &openiot.MessageInfo{
+		Sequence: 111,
+	}
+
+	payload, err := encode.MakeReadyToSendMessage(hdr, openiot.EncryptionType_PLAIN, nil, msg)
+	assert.NoError(t, err)
+
+	err = ProcessMessage(&Message{Payload: payload})
+	assert.EqualError(t, err, "Device 0xffff is not registered")
+}
+
+func TestUnknownDeviceMessage(t *testing.T) {
+	// Add dummy device
+	err := device.AddDevice(&device.Device{
+		ID:           0xff,
+		ProtobufName: "qqqq",
+	})
+	assert.NoError(t, err)
+	defer device.DeleteAllDevices()
+
+	// Send message with dummy device as dst
+	hdr := &openiot.Header{
+		DeviceId: 0xff,
+	}
+
+	var buf bytes.Buffer
+	encode.WriteSingleMessage(&buf, hdr)
+
+	err = ProcessMessage(&Message{Payload: buf.Bytes()})
+	assert.EqualError(t, err, "0xff: Protobuf 'qqqq' is not registered")
+}
+
+func TestDeviceMessageDeserializeError(t *testing.T) {
+	// Add dummy device
+	err := device.AddDevice(&device.Device{
+		ID:           0xff,
+		ProtobufName: "openiot.JoinRequest",
+	})
+	assert.NoError(t, err)
+	defer device.DeleteAllDevices()
+
+	// Craft message with valid CRC of device message, but message itself is junk
+	hdr := &openiot.Header{
+		DeviceId: 0xff,
+		Crc:      crc32.ChecksumIEEE([]byte("junk")),
+	}
+	var buf bytes.Buffer
+	encode.WriteSingleMessage(&buf, hdr)
+	buf.WriteString("junk")
+
+	err = ProcessMessage(&Message{
+		Payload: buf.Bytes(),
+		Source:  &mockTransport{},
+	})
+	assert.EqualError(t, err, "0xff: decrypt/deserialize failed: Invalid message length: 106, max 3")
+}

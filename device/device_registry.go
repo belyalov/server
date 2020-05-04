@@ -36,7 +36,9 @@ func AddDevice(device *Device) error {
 
 // DeleteAllDevices deletes all registered devices
 func DeleteAllDevices() {
-	// ReplaceAllDevicesWith(nil)
+	deviceLock.Lock()
+	defer deviceLock.Unlock()
+	devicesByID = map[uint64]*Device{}
 }
 
 // DeleteDeviceByID deletes device from registry
