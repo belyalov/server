@@ -64,6 +64,16 @@ func ProcessMessage(message *Message) error {
 		return fmt.Errorf("0x%x: decrypt/deserialize failed: %v", dev.ID, err)
 	}
 
+	// Drop duplicates
+	if info.Sequence <= dev.SequenceReceive {
+		return fmt.Errorf("0x%x: drop duplicate packet seq %d (last seq %d)",
+			dev.ID,
+			info.Sequence,
+			dev.SequenceReceive,
+		)
+	}
+	dev.SequenceReceive = info.Sequence
+
 	// Run all associated handlers
 	glog.Infof("Message from %s/%s/%s",
 		message.Source.GetTypeName(),

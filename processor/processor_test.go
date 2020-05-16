@@ -94,3 +94,37 @@ func TestDeviceMessageDeserializeError(t *testing.T) {
 	})
 	assert.EqualError(t, err, "0xff: decrypt/deserialize failed: Invalid message length: 106, max 3")
 }
+
+func TestDeviceMessageDuplicate(t *testing.T) {
+	// Add dummy device
+	dev := &device.Device{
+		ID:           0xff,
+		ProtobufName: "openiot.JoinRequest",
+	}
+	err := device.AddDevice(dev)
+	assert.NoError(t, err)
+	defer device.DeleteAllDevices()
+
+	// Craft device message: header + info + joinrequest
+	hdr := &openiot.Header{
+		DeviceId: dev.ID,
+	}
+	info := &openiot.MessageInfo{
+		Sequence: 1,
+	}
+	request := &openiot.JoinRequest{}
+	payload, err := encode.MakeReadyToSendMessage(hdr, openiot.EncryptionType_PLAIN, nil, info, request)
+	assert.NoError(t, err)
+
+	// Send it 2 times: second packet should be dropped
+	err = ProcessMessage(&Message{
+		Payload: payload,
+		Source:  &mockTransport{},
+	})
+	assert.NoError(t, err)
+	err = ProcessMessage(&Message{
+		Payload: payload,
+		Source:  &mockTransport{},
+	})
+	assert.EqualError(t, err, "0xff: drop duplicate packet seq 1 (last seq 1)")
+}
