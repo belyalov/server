@@ -6,12 +6,12 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
-	github.com/golang/protobuf v1.4.0
-	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
+	github.com/golang/protobuf v1.4.2
+	github.com/influxdata/influxdb1-client v0.0.0-20200515024757-02f0bf5dbca3
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.2.2
-	github.com/open-iot-devices/protobufs v0.0.0-20200412000955-a775663351d6
+	github.com/mitchellh/mapstructure v1.3.0
+	github.com/open-iot-devices/protobufs v0.0.0-20200423041819-11667e1c9df9
 	github.com/stretchr/testify v1.4.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 )
