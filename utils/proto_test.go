@@ -33,11 +33,13 @@ func TestExtractAllValuesEmbedded(t *testing.T) {
 		Humidity: &sensor.Humidity{
 			RelativePercent: 50,
 		},
+		Uptime: 123,
 	}
 	expected := map[string]interface{}{
 		"temperature.value_c":       float32(10.1),
 		"temperature.value_f":       float32(99.9),
 		"humidity.relative_percent": uint32(50),
+		"uptime":                    uint32(123),
 	}
 
 	results := ExtractAllNameValuesFromProtobuf(req)
