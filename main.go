@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"math/rand"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/processor"
 	"github.com/open-iot-devices/server/transport"
+	"github.com/open-iot-devices/server/utils/sun"
 )
 
 var flagTransportsFilename = flag.String("config.transports", ".config/transports.yaml", "Transports config filename")
@@ -95,6 +97,11 @@ func main() {
 				}
 			}
 		}(&wg, tr)
+	}
+
+	glog.Info("Starting sun data updater...")
+	if err := sun.Start(context.Background()); err != nil {
+		glog.Fatalf("Unable to start sun data updater: %v", err)
 	}
 
 	// Setup SIGTERM / SIGINT
