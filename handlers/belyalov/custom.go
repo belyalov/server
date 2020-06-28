@@ -7,6 +7,7 @@ import (
 
 	"github.com/open-iot-devices/server/device"
 	"github.com/open-iot-devices/server/encode"
+	"github.com/open-iot-devices/server/utils/sun"
 
 	pb "github.com/belyalov/protobufs/go"
 )
@@ -35,6 +36,10 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 	ctrl := &pb.Control{
 		LoveHeart: &pb.LoveHeartControl{},
 		Tulip:     &pb.TulipControl{},
+		WallSpotlight: &pb.WallSpotlightControl{
+			HourOn:  uint32(sun.GetSunset().Hour()),
+			HourOff: uint32(sun.GetSunrise().Hour() + 1),
+		},
 	}
 	hour, _, _ := time.Now().Clock()
 	if hour >= 10 && hour < 20 {
