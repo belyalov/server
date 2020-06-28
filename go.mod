@@ -3,7 +3,7 @@ module github.com/open-iot-devices/server
 go 1.13
 
 require (
-	github.com/belyalov/protobufs v0.0.0-20200422043646-edab01896c6b
+	github.com/belyalov/protobufs v0.0.0-20200621015630-b043265b1467
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -11,9 +11,10 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/influxdata/influxdb1-client v0.0.0-20200515024757-02f0bf5dbca3
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.3.0
+	github.com/mitchellh/mapstructure v1.3.2
 	github.com/open-iot-devices/protobufs v0.0.0-20200423041819-11667e1c9df9
 	github.com/stretchr/testify v1.4.0
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
