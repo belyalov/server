@@ -40,6 +40,11 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 			HourOn:  uint32(sun.GetSunset().Hour()),
 			HourOff: uint32(sun.GetSunrise().Hour() + 1),
 		},
+		WallCtrlSpotlight: &pb.WallCtrlSpotlightControl{
+			HourOn:  17,
+			HourOff: 23,
+			R:       true,
+		},
 	}
 	hour, _, _ := time.Now().Clock()
 	if hour >= 10 && hour < 20 {
