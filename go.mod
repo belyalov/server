@@ -3,9 +3,8 @@ module github.com/open-iot-devices/server
 go 1.13
 
 require (
-	github.com/belyalov/protobufs v0.0.0-20200726234047-13abe4f1796d
+	github.com/belyalov/protobufs v0.0.0-20200802192223-5fdf56d9f92f
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/golang/protobuf v1.4.2

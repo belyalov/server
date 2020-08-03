@@ -1,6 +1,7 @@
 package belyalov
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -12,7 +13,10 @@ import (
 	pb "github.com/belyalov/protobufs/go"
 )
 
-const handlerName = "belyalov"
+const (
+	handlerName      = "belyalov"
+	asteriskDeviceID = 0x343534340029001e
+)
 
 type deviceHandler struct{}
 
@@ -27,11 +31,18 @@ func (h *deviceHandler) Start() error {
 func (h *deviceHandler) Stop() {
 }
 
-func (h *deviceHandler) AddDevice(device *device.Device) {
+func (h *deviceHandler) AddDevice(dev *device.Device) {
 
 }
 
-func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message) error {
+func (h *deviceHandler) ProcessMessage(dev *device.Device, rawMsg proto.Message) error {
+	msg, ok := rawMsg.(*pb.Status)
+	if !ok {
+		return fmt.Errorf("Got %T, but belyalov custom handler expects only pb.Status", rawMsg)
+	}
+	if msg.MishaControl != nil {
+		return h.processMishaMessage(dev, msg)
+	}
 	// Prepare control message
 	ctrl := &pb.Control{
 		LoveHeart: &pb.LoveHeartControl{},
@@ -39,11 +50,6 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 		WallSpotlight: &pb.WallSpotlightControl{
 			HourOn:  uint32(sun.GetSunset().Hour()),
 			HourOff: uint32(sun.GetSunrise().Hour() + 1),
-		},
-		WallCtrlSpotlight: &pb.WallCtrlSpotlightControl{
-			HourOn:  17,
-			HourOff: 23,
-			R:       true,
 		},
 	}
 	hour, _, _ := time.Now().Clock()
@@ -53,11 +59,35 @@ func (h *deviceHandler) ProcessMessage(device *device.Device, msg proto.Message)
 	}
 
 	// Send it
-	payload, err := encode.MakeReadyToSendDeviceMessage(device, ctrl)
+	payload, err := encode.MakeReadyToSendDeviceMessage(dev, ctrl)
 	if err == nil {
-		err = device.Transport().Send(payload)
+		err = dev.Transport().Send(payload)
 	}
 	return err
+}
+
+func (h *deviceHandler) processMishaMessage(dev *device.Device, msg *pb.Status) error {
+	// Button2 points to "Asterisk" wallSpotlight which has only white LEDs
+	if msg.MishaControl.Button2 {
+		ctrl := &pb.Control{
+			WallCtrlSpotlight: &pb.WallCtrlSpotlightControl{
+				HourOn:  17,
+				HourOff: 23,
+				W:       true,
+			},
+		}
+		asteriskDev := device.FindDeviceByID(asteriskDeviceID)
+		if asteriskDev == nil {
+			return fmt.Errorf("Device asterisk (%x) not found", asteriskDeviceID)
+		}
+		payload, err := encode.MakeReadyToSendDeviceMessage(asteriskDev, ctrl)
+		if err == nil {
+			err = dev.Transport().Send(payload)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // Register device handler
