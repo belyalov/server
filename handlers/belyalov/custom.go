@@ -15,7 +15,7 @@ import (
 
 const (
 	handlerName      = "belyalov"
-	asteriskDeviceID = 0x343534340029001e
+	asteriskDeviceID = uint64(0x343534340029001e)
 )
 
 type deviceHandler struct{}
